@@ -4,14 +4,21 @@
     "start": "ts-node src/index.ts"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.2",
+    "@heroicons/react": "^2.2.0",
+    "@tailwindcss/forms": "^0.5.10",
     "@types/axios": "^0.9.36",
     "@types/jsonwebtoken": "^9.0.9",
     "axios": "^1.9.0",
     "express-validator": "^7.2.1",
-    "mongoose": "^8.14.1"
+    "mongoose": "^8.14.1",
+    "react-router-dom": "^7.5.3"
   },
   "devDependencies": {
     "@types/mongoose": "^5.11.96",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0"
   }
