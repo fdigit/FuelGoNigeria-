@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
-router.get('/db-status', (req: Request, res: Response) => {
+router.get('/db-status', (_req: Request, res: Response) => {
   const dbState = mongoose.connection.readyState;
   const states = {
     0: 'disconnected',

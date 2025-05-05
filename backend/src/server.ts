@@ -1,10 +1,11 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import connectDB from './config/database';
 import testRoutes from './routes/test';
+import authRoutes from './routes/auth';
 
 // Load environment variables
 dotenv.config();
@@ -30,14 +31,15 @@ app.use(limiter);
 
 // Routes
 app.use('/api/test', testRoutes);
+app.use('/api/auth', authRoutes);
 
 // Basic route
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'Welcome to FuelGo Nigeria API' });
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: Function) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
 });
