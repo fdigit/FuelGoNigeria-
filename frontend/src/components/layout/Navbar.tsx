@@ -1,115 +1,249 @@
-import { Fragment } from 'react';
-import { Link } from 'react-router-dom';
-import { Disclosure, Menu, Transition } from '@headlessui/react';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MagnifyingGlassIcon, 
+  MapPinIcon, 
+  SunIcon, 
+  MoonIcon,
+  Bars3Icon,
+  XMarkIcon
+} from '@heroicons/react/24/outline';
 
-const navigation = [
-  { name: 'Home', href: '/', current: true },
-  { name: 'About', href: '/about', current: false },
-  { name: 'Services', href: '/services', current: false },
-  { name: 'Contact', href: '/contact', current: false },
-];
-
-function classNames(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
+interface NavbarProps {
+  onSearch: (query: string) => void;
+  onLocationSelect: (location: string) => void;
 }
 
-export default function Navbar() {
+export default function Navbar({ onSearch, onLocationSelect }: NavbarProps) {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const location = useLocation();
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 0);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Handle dark mode
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  // Mock locations for search
+  const locations = [
+    'Lagos, Nigeria',
+    'Port Harcourt, Rivers',
+    'Abuja, FCT',
+    'Ibadan, Oyo',
+    'Kano, Kano State',
+  ];
+
+  const filteredLocations = locations.filter(loc =>
+    loc.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setShowSearchResults(true);
+  };
+
+  const handleLocationSelect = (location: string) => {
+    setSearchQuery(location);
+    setShowSearchResults(false);
+    setIsSearchExpanded(false);
+    onLocationSelect(location);
+  };
+
   return (
-    <Disclosure as="nav" className="bg-white shadow">
-      {({ open }) => (
-        <>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 justify-between">
-              <div className="flex">
-                <div className="flex flex-shrink-0 items-center">
-                  <Link to="/" className="text-2xl font-bold text-primary-600">
-                    FuelGo
-                  </Link>
-                </div>
-                <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={classNames(
-                        item.current
-                          ? 'border-primary-500 text-gray-900'
-                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
-                        'inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium'
-                      )}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                <Link
-                  to="/login"
-                  className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="btn-primary ml-4"
-                >
-                  Register
-                </Link>
-              </div>
-              <div className="-mr-2 flex items-center sm:hidden">
-                <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500">
-                  <span className="sr-only">Open main menu</span>
-                  {open ? (
-                    <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                  ) : (
-                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                  )}
-                </Disclosure.Button>
-              </div>
+    <motion.nav
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? 'bg-white dark:bg-gray-900 shadow-lg'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center">
+            <span className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+              FuelGo
+            </span>
+          </Link>
+
+          {/* Search Bar - Hidden on mobile unless expanded */}
+          <div className={`flex-1 max-w-2xl mx-8 relative ${isSearchExpanded ? 'block' : 'hidden md:block'}`}>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={handleSearch}
+                onFocus={() => setShowSearchResults(true)}
+                placeholder="Search by location..."
+                className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+              />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             </div>
+
+            {/* Search Results Dropdown */}
+            <AnimatePresence>
+              {showSearchResults && searchQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute w-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden"
+                >
+                  {filteredLocations.map((location) => (
+                    <button
+                      key={location}
+                      onClick={() => handleLocationSelect(location)}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                    >
+                      <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      {location}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <Disclosure.Panel className="sm:hidden">
-            <div className="space-y-1 pb-3 pt-2">
-              {navigation.map((item) => (
-                <Disclosure.Button
-                  key={item.name}
-                  as={Link}
-                  to={item.href}
-                  className={classNames(
-                    item.current
-                      ? 'bg-primary-50 border-primary-500 text-primary-700'
-                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700',
-                    'block border-l-4 py-2 pl-3 pr-4 text-base font-medium'
-                  )}
-                >
-                  {item.name}
-                </Disclosure.Button>
-              ))}
+          {/* Mobile Search Button */}
+          <button
+            onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+            className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          </button>
+
+          {/* Desktop Navigation Links */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link
+              to="/vendors"
+              className={`text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 ${
+                location.pathname === '/vendors' ? 'text-primary-600 dark:text-primary-400' : ''
+              }`}
+            >
+              Vendors
+            </Link>
+            <Link
+              to="/track"
+              className={`text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 ${
+                location.pathname === '/track' ? 'text-primary-600 dark:text-primary-400' : ''
+              }`}
+            >
+              Track Order
+            </Link>
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              {isDarkMode ? (
+                <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+            <Link
+              to="/login"
+              className="btn-primary"
+            >
+              Login
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            {isMobileMenuOpen ? (
+              <XMarkIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+            ) : (
+              <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
+          >
+            <div className="px-4 py-3 space-y-3">
+              <Link
+                to="/vendors"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  location.pathname === '/vendors'
+                    ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/50'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Vendors
+              </Link>
+              <Link
+                to="/track"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  location.pathname === '/track'
+                    ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/50'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Track Order
+              </Link>
+              <button
+                onClick={() => {
+                  setIsDarkMode(!isDarkMode);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                {isDarkMode ? (
+                  <>
+                    <SunIcon className="h-5 w-5 mr-2" />
+                    Light Mode
+                  </>
+                ) : (
+                  <>
+                    <MoonIcon className="h-5 w-5 mr-2" />
+                    Dark Mode
+                  </>
+                )}
+              </button>
+              <Link
+                to="/login"
+                className="block w-full text-center btn-primary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
             </div>
-            <div className="border-t border-gray-200 pb-3 pt-4">
-              <div className="space-y-1">
-                <Disclosure.Button
-                  as={Link}
-                  to="/login"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                >
-                  Login
-                </Disclosure.Button>
-                <Disclosure.Button
-                  as={Link}
-                  to="/register"
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                >
-                  Register
-                </Disclosure.Button>
-              </div>
-            </div>
-          </Disclosure.Panel>
-        </>
-      )}
-    </Disclosure>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 } 

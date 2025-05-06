@@ -1,3 +1,5 @@
+import { Vendor } from '../types';
+
 export interface FuelStation {
   id: string;
   name: string;
@@ -146,4 +148,63 @@ export const testimonials = [
     content: 'The app is intuitive and the delivery service is reliable. Highly recommended!',
     rating: 4,
   },
+];
+
+export const mockVendors: Vendor[] = [
+  {
+    id: '1',
+    name: 'Quick Fuel Station',
+    location: {
+      city: 'Lagos',
+      address: 'Victoria Island'
+    },
+    rating: 4.5,
+    fuelTypes: [
+      { type: 'Petrol (PMS)', price: 650 },
+      { type: 'Diesel (AGO)', price: 680 }
+    ],
+    deliveryTime: 'Within 30 mins',
+    isTopVendor: true,
+    isFastDelivery: true,
+    hasHotPrice: true,
+    reviews: [
+      {
+        id: '1',
+        rating: 5,
+        comment: 'Fast delivery and great service!',
+        userName: 'John D.'
+      },
+      {
+        id: '2',
+        rating: 4,
+        comment: 'Good prices and reliable delivery.',
+        userName: 'Sarah M.'
+      }
+    ]
+  },
+  {
+    id: '2',
+    name: 'City Gas Station',
+    location: {
+      city: 'Lagos',
+      address: 'Ikeja'
+    },
+    rating: 4.2,
+    fuelTypes: [
+      { type: 'Petrol (PMS)', price: 645 },
+      { type: 'Diesel (AGO)', price: 675 }
+    ],
+    deliveryTime: 'Within 45 mins',
+    isTopVendor: false,
+    isFastDelivery: true,
+    hasHotPrice: false,
+    reviews: [
+      {
+        id: '3',
+        rating: 4,
+        comment: 'Reliable service.',
+        userName: 'Mike R.'
+      }
+    ]
+  }
 ]; 

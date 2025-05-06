@@ -1,8 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { fuelStations, fuelPrices, testimonials } from '../data/mockData';
+import { fuelStations, fuelPrices, testimonials, mockVendors } from '../data/mockData';
+import VendorGrid from '../components/vendors/VendorGrid';
 import Footer from '../components/layout/Footer';
+import { useToast } from '../contexts/ToastContext';
+import type { Vendor } from '../types';
 
 const features = [
   {
@@ -35,12 +38,28 @@ const features = [
 ];
 
 export default function Home() {
+  const [isLoading, setIsLoading] = useState(true);
+  const { showToast } = useToast();
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  React.useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleOrder = (vendorId: string) => {
+    showToast('success', 'Order request sent successfully!');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero Section */}
       <section className="relative bg-gray-900 text-white">
         <div className="absolute inset-0 overflow-hidden">
@@ -88,8 +107,49 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Featured Vendors Section */}
       <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+              Featured Vendors
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              Trusted fuel stations near you
+            </p>
+          </motion.div>
+
+          <VendorGrid 
+            vendors={mockVendors.slice(0, 6)} 
+            isLoading={isLoading}
+            onOrder={handleOrder}
+          />
+          
+          <div className="mt-12 text-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <Link
+                to="/vendors"
+                className="btn-primary"
+              >
+                View All Vendors
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0 }}
@@ -126,7 +186,7 @@ export default function Home() {
       </section>
 
       {/* Fuel Prices Section */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0 }}
@@ -168,7 +228,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-16 bg-white">
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0 }}
@@ -190,7 +250,7 @@ export default function Home() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.2 }}
                 viewport={{ once: true }}
-                className="bg-gray-50 rounded-lg p-6"
+                className="bg-white rounded-lg p-6"
               >
                 <div className="flex items-center mb-4">
                   {[...Array(5)].map((_, i) => (
