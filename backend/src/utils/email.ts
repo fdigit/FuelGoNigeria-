@@ -1,13 +1,82 @@
 import nodemailer from 'nodemailer';
 
-// Create reusable transporter
+interface EmailOptions {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}
+
 const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_SECURE === 'true',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
+
+export const sendEmail = async (options: EmailOptions) => {
+  try {
+    const mailOptions = {
+      from: `"FuelGo Nigeria" <${process.env.SMTP_USER}>`,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html || options.text,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+};
+
+// Email templates
+export const emailTemplates = {
+  welcome: (name: string) => ({
+    subject: 'Welcome to FuelGo Nigeria',
+    text: `Dear ${name},\n\nThank you for registering with FuelGo Nigeria. Your account is pending approval. We will notify you once it's approved.\n\nBest regards,\nFuelGo Nigeria Team`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Welcome to FuelGo Nigeria!</h2>
+        <p>Dear ${name},</p>
+        <p>Thank you for registering with FuelGo Nigeria. Your account is pending approval. We will notify you once it's approved.</p>
+        <p>Best regards,<br>FuelGo Nigeria Team</p>
+      </div>
+    `,
+  }),
+
+  approval: (name: string) => ({
+    subject: 'Your FuelGo Nigeria Account Has Been Approved',
+    text: `Dear ${name},\n\nYour account has been approved. You can now log in to your account.\n\nBest regards,\nFuelGo Nigeria Team`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Account Approved!</h2>
+        <p>Dear ${name},</p>
+        <p>Your account has been approved. You can now log in to your account.</p>
+        <p>Best regards,<br>FuelGo Nigeria Team</p>
+      </div>
+    `,
+  }),
+
+  rejection: (name: string, reason?: string) => ({
+    subject: 'Your FuelGo Nigeria Account Application',
+    text: `Dear ${name},\n\nWe regret to inform you that your account application has been rejected.${reason ? `\n\nReason: ${reason}` : ''}\n\nBest regards,\nFuelGo Nigeria Team`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">Account Application Update</h2>
+        <p>Dear ${name},</p>
+        <p>We regret to inform you that your account application has been rejected.${reason ? `<br><br><strong>Reason:</strong> ${reason}` : ''}</p>
+        <p>Best regards,<br>FuelGo Nigeria Team</p>
+      </div>
+    `,
+  }),
+};
 
 // Email templates
 const verificationEmailTemplate = (token: string) => ({

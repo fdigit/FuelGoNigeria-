@@ -1,35 +1,26 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { User, RegisterData } from '../types/user';
 
-interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: 'customer' | 'vendor' | 'driver' | 'admin';
-}
+// Configure axios defaults
+const API_URL = 'http://localhost:5000/api';
+axios.defaults.baseURL = API_URL;
+axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 interface AuthResponse {
   token: string;
   user: User;
+  status?: 'pending' | 'active' | 'rejected';
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (data: RegisterData) => Promise<{ message: string }>;
   logout: () => void;
-}
-
-interface RegisterData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  phoneNumber: string;
-  role: 'customer' | 'vendor' | 'driver';
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,31 +53,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthResponse> => {
     try {
       setError(null);
-      const response = await axios.post<AuthResponse>('/api/auth/login', { email, password });
-      const { token, user } = response.data;
+      const response = await axios.post<AuthResponse>('/auth/login', { email, password });
+      const { token, user, status } = response.data;
+      
+      if (status === 'pending') {
+        return { token, user, status };
+      }
+
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
+      return { token, user };
     } catch (err: any) {
       setError(err.response?.data?.message || 'An error occurred during login');
       throw err;
     }
   };
 
-  const register = async (userData: RegisterData) => {
+  const register = async (data: RegisterData): Promise<{ message: string }> => {
     try {
-      setError(null);
-      const response = await axios.post<AuthResponse>('/api/auth/register', userData);
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An error occurred during registration');
-      throw err;
+      const response = await axios.post('/auth/register', data);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Registration failed');
+      }
+      throw error;
     }
   };
 
@@ -96,8 +91,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const clearError = () => {
+    setError(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout, clearError }}>
       {children}
     </AuthContext.Provider>
   );

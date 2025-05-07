@@ -18,6 +18,8 @@ import VendorCard from './components/vendors/VendorCard';
 import VendorCardSkeleton from './components/vendors/VendorCardSkeleton';
 import { useToast } from './contexts/ToastContext';
 import type { Vendor } from './types';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Mock data for vendors
 const mockVendors: Vendor[] = [
@@ -139,6 +141,18 @@ function App() {
     <AuthProvider>
       <ToastProvider>
         <Router>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Layout><HomePage /></Layout>} />

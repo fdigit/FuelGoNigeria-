@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema, Types } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 // Raw user properties (schema shape)
@@ -9,7 +9,7 @@ export interface IUserSchema {
   password: string;
   phoneNumber: string;
   role: 'customer' | 'vendor' | 'driver' | 'admin';
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'pending' | 'active' | 'rejected' | 'suspended';
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   emailVerificationToken?: string;
@@ -21,12 +21,11 @@ export interface IUserSchema {
 
 // Full user document with Mongoose instance methods
 export interface IUser extends Document, IUserSchema {
-  _id: Types.ObjectId;
   comparePassword(candidatePassword: string): Promise<boolean>;
   toJSON(): any;
 }
 
-const userSchema = new Schema<IUserSchema>(
+const userSchema = new Schema<IUser>(
   {
     firstName: {
       type: String,
@@ -64,8 +63,8 @@ const userSchema = new Schema<IUserSchema>(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'suspended'],
-      default: 'active',
+      enum: ['pending', 'active', 'rejected', 'suspended'],
+      default: 'pending',
     },
     isEmailVerified: {
       type: Boolean,
