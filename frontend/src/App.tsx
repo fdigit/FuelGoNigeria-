@@ -7,6 +7,9 @@ import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import CustomerDashboard from './pages/dashboard/CustomerDashboard';
+import AdminDashboard from './pages/dashboard/AdminDashboard';
+import DriverDashboard from './pages/dashboard/DriverDashboard';
+import VendorDashboard from './pages/dashboard/VendorDashboard';
 import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
@@ -142,15 +145,11 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['customer']}>
-                  <CustomerDashboard />
-                </ProtectedRoute>
-              }
-            />
+            {/* Dashboard routes - temporarily unprotected for development */}
+            <Route path="/dashboard" element={<Layout><CustomerDashboard /></Layout>} />
+            <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
+            <Route path="/driver" element={<Layout><DriverDashboard /></Layout>} />
+            <Route path="/vendor" element={<Layout><VendorDashboard /></Layout>} />
 
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/" replace />} />
