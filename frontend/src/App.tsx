@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ChakraProvider } from '@chakra-ui/react';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
@@ -7,7 +8,7 @@ import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import CustomerDashboard from './pages/dashboard/CustomerDashboard';
-import AdminDashboard from './pages/dashboard/AdminDashboard';
+import AdminDashboard from './components/admin/AdminDashboard';
 import DriverDashboard from './pages/dashboard/DriverDashboard';
 import VendorDashboard from './pages/dashboard/VendorDashboard';
 import { ToastProvider } from './contexts/ToastContext';
@@ -20,6 +21,7 @@ import { useToast } from './contexts/ToastContext';
 import type { Vendor } from './types';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import theme from './theme';
 
 // Mock data for vendors
 const mockVendors: Vendor[] = [
@@ -138,39 +140,69 @@ function HomePage() {
 
 function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Layout><HomePage /></Layout>} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+    <ChakraProvider theme={theme}>
+      <AuthProvider>
+        <ToastProvider>
+          <Router>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Layout><HomePage /></Layout>} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Dashboard routes - temporarily unprotected for development */}
-            <Route path="/dashboard" element={<Layout><CustomerDashboard /></Layout>} />
-            <Route path="/admin" element={<Layout><AdminDashboard /></Layout>} />
-            <Route path="/driver" element={<Layout><DriverDashboard /></Layout>} />
-            <Route path="/vendor" element={<Layout><VendorDashboard /></Layout>} />
+              {/* Protected routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute roles={['customer']}>
+                    <Layout><CustomerDashboard /></Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/*" 
+                element={
+                  <ProtectedRoute roles={['admin']}>
+                    <Layout><AdminDashboard /></Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/driver" 
+                element={
+                  <ProtectedRoute roles={['driver']}>
+                    <Layout><DriverDashboard /></Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/vendor" 
+                element={
+                  <ProtectedRoute roles={['vendor']}>
+                    <Layout><VendorDashboard /></Layout>
+                  </ProtectedRoute>
+                } 
+              />
 
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </ToastProvider>
-    </AuthProvider>
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </ToastProvider>
+      </AuthProvider>
+    </ChakraProvider>
   );
 }
 

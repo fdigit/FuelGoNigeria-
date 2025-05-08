@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import User from '../models/User';
 import AdminInvitation from '../models/AdminInvitation';
-import { sendEmail } from '../utils/email';
+import { sendEmail, emailTemplates } from '../utils/email';
+import { Types } from 'mongoose';
 
 // Create an admin invitation
 export const createAdminInvitation = async (req: Request, res: Response) => {
@@ -136,5 +137,137 @@ export const listAdminInvitations = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error listing admin invitations:', error);
     res.status(500).json({ message: 'Error listing admin invitations' });
+  }
+};
+
+// Get all users
+export const getAllUsers = async (req: Request, res: Response) => {
+  try {
+    const users = await User.find()
+      .select('-password')
+      .sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get user details
+export const getUserDetails = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Get user details error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get pending users
+export const getPendingUsers = async (req: Request, res: Response) => {
+  try {
+    const pendingUsers = await User.find({ status: 'pending' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    res.json(pendingUsers);
+  } catch (error) {
+    console.error('Get pending users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Approve user
+export const approveUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.status = 'active';
+    await user.save();
+
+    // Send approval email
+    try {
+      const { subject, text, html } = emailTemplates.approval(user.firstName);
+      await sendEmail({
+        to: user.email,
+        subject,
+        text,
+        html
+      });
+    } catch (emailError) {
+      console.error('Error sending approval email:', emailError);
+    }
+
+    res.json({ message: 'User approved successfully' });
+  } catch (error) {
+    console.error('Approve user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Reject user
+export const rejectUser = async (req: Request, res: Response) => {
+  try {
+    const { reason } = req.body;
+    const user = await User.findById(req.params.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.status = 'rejected';
+    await user.save();
+
+    // Send rejection email
+    try {
+      const { subject, text, html } = emailTemplates.rejection(user.firstName, reason);
+      await sendEmail({
+        to: user.email,
+        subject,
+        text,
+        html
+      });
+    } catch (emailError) {
+      console.error('Error sending rejection email:', emailError);
+    }
+
+    res.json({ message: 'User rejected successfully' });
+  } catch (error) {
+    console.error('Reject user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update user status
+export const updateUserStatus = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    const userId = new Types.ObjectId(req.params.userId);
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!['active', 'suspended', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    user.status = status;
+    await user.save();
+
+    res.json({ message: 'User status updated successfully' });
+  } catch (error) {
+    console.error('Update user status error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 }; 

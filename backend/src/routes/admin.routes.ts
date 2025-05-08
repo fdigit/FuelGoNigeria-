@@ -5,7 +5,13 @@ import { ipWhitelist } from '../middleware/security.middleware';
 import {
   createAdminInvitation,
   registerAdmin,
-  listAdminInvitations
+  listAdminInvitations,
+  getPendingUsers,
+  approveUser,
+  rejectUser,
+  getAllUsers,
+  getUserDetails,
+  updateUserStatus
 } from '../controllers/admin.controller';
 
 const router = express.Router();
@@ -15,13 +21,17 @@ router.use(auth);
 router.use(authorize(['admin']));
 router.use(ipWhitelist);
 
-// Create admin invitation
+// User Management Routes
+router.get('/users', getAllUsers);
+router.get('/users/:userId', getUserDetails);
+router.get('/users/pending', getPendingUsers);
+router.post('/users/:userId/approve', approveUser);
+router.post('/users/:userId/reject', rejectUser);
+router.patch('/users/:userId/status', updateUserStatus);
+
+// Admin Management Routes
 router.post('/invite', createAdminInvitation);
-
-// List all admin invitations
 router.get('/invitations', listAdminInvitations);
-
-// Public route - register admin using invitation
 router.post('/register', registerAdmin);
 
 export default router; 
