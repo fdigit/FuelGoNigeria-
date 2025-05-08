@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User, { IUser } from '../models/User';
-
-type UserRole = 'customer' | 'vendor' | 'driver' | 'admin';
+import User, { IUser, UserRole } from '../models/User';
 
 interface JwtPayload {
   id: string;

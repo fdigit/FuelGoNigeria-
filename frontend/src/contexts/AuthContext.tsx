@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, RegisterData } from '../types/user';
+import { toast } from 'react-toastify';
 
 interface AuthContextType {
   user: (User & { token: string }) | null;
@@ -13,6 +14,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Validate API URL
+const API_URL = process.env.REACT_APP_API_URL;
+if (!API_URL) {
+  console.error('REACT_APP_API_URL is not defined in environment variables');
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<(User & { token: string }) | null>(null);
@@ -32,48 +39,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/login`, {
+      if (!API_URL) {
+        throw new Error('API URL is not configured');
+      }
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
-      if (!response.ok) {
-        throw new Error('Login failed');
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
       }
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       const userData = { ...data.user, token: data.token };
       setUser(userData);
       setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userData));
       return { token: data.token, user: data.user };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      if (error.message === 'Server returned non-JSON response') {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else {
+        toast.error(error.message || 'Login failed. Please check your credentials.');
+      }
       throw error;
     }
   };
 
   const register = async (data: RegisterData) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/auth/register`, {
+      if (!API_URL) {
+        throw new Error('API URL is not configured');
+      }
+
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        throw new Error('Registration failed');
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server returned non-JSON response');
       }
 
-      const result = await response.json();
-      return { message: result.message };
-    } catch (error) {
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Registration failed');
+      }
+
+      return responseData;
+    } catch (error: any) {
       console.error('Registration error:', error);
+      if (error.message === 'Server returned non-JSON response') {
+        toast.error('Unable to connect to the server. Please try again later.');
+      } else {
+        toast.error(error.message || 'Registration failed. Please try again.');
+      }
       throw error;
     }
   };
@@ -84,21 +127,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
   };
 
-  const clearError = () => {
-    setError(null);
-  };
+  const clearError = () => setError(null);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      error, 
-      login, 
-      register, 
-      logout, 
-      clearError,
-      isAuthenticated 
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        error,
+        login,
+        register,
+        logout,
+        clearError,
+        isAuthenticated,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

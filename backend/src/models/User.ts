@@ -1,6 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+export type UserRole = 'customer' | 'vendor' | 'driver' | 'admin' | 'super_admin';
+export type UserStatus = 'pending' | 'active' | 'rejected' | 'suspended';
+
 // Raw user properties (schema shape)
 export interface IUserSchema {
   firstName: string;
@@ -8,8 +11,8 @@ export interface IUserSchema {
   email: string;
   password: string;
   phoneNumber: string;
-  role: 'customer' | 'vendor' | 'driver' | 'admin';
-  status: 'pending' | 'active' | 'rejected' | 'suspended';
+  role: UserRole;
+  status: UserStatus;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   emailVerificationToken?: string;
@@ -58,7 +61,7 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['customer', 'vendor', 'driver', 'admin'],
+      enum: ['customer', 'vendor', 'driver', 'admin', 'super_admin'],
       default: 'customer',
     },
     status: {

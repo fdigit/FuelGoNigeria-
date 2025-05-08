@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { RegisterData } from '../../types/user';
 import { toast } from 'react-toastify';
+import { motion } from 'framer-motion';
+import { RegisterData, UserRole } from '../../types/user';
 
-const Register: React.FC = () => {
+export default function Register() {
   const navigate = useNavigate();
-  const { register: registerUser } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<RegisterData>({
+  const { register } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
-    role: 'customer',
+    role: 'customer' as UserRole,
     // Driver specific
     licenseNumber: '',
     vehicleType: '',
@@ -35,87 +37,74 @@ const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setLoading(true);
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Basic validation
-      if (formData.password.length < 6) {
-        toast.error('Password must be at least 6 characters long');
-        setIsLoading(false);
-        return;
-      }
-
-      // Role-specific validation
-      if (formData.role === 'driver') {
-        if (!formData.licenseNumber || !formData.vehicleType || !formData.vehiclePlate) {
-          toast.error('Please fill in all driver-specific fields');
-          setIsLoading(false);
-          return;
-        }
-      } else if (formData.role === 'vendor') {
-        if (!formData.businessName || !formData.businessAddress || !formData.businessPhone) {
-          toast.error('Please fill in all vendor-specific fields');
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      const response = await registerUser(formData);
-      toast.success(response.message);
-      
-      // If admin registration is successful, redirect to admin dashboard
-      if (formData.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/login');
-      }
-    } catch (error) {
+      const { confirmPassword, ...registerData } = formData;
+      await register(registerData as RegisterData);
+      toast.success('Registration successful! Please wait for admin approval.');
+      navigate('/login');
+    } catch (error: any) {
+      toast.error(error.message || 'Registration failed');
       console.error('Registration error:', error);
-      toast.error(error instanceof Error ? error.message : 'Registration failed');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg"
+      >
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Join FuelGo Nigeria today
+          </p>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
+                  First name
                 </label>
                 <input
-                  type="text"
-                  name="firstName"
                   id="firstName"
+                  name="firstName"
+                  type="text"
                   required
                   value={formData.firstName}
                   onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  placeholder="Enter your first name"
                 />
               </div>
-
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
+                  Last name
                 </label>
                 <input
-                  type="text"
-                  name="lastName"
                   id="lastName"
+                  name="lastName"
+                  type="text"
                   required
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  placeholder="Enter your last name"
                 />
               </div>
             </div>
@@ -125,57 +114,45 @@ const Register: React.FC = () => {
                 Email address
               </label>
               <input
-                type="email"
-                name="email"
                 id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                id="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Enter your email"
               />
             </div>
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number
+                Phone number
               </label>
               <input
-                type="tel"
-                name="phone"
                 id="phone"
+                name="phone"
+                type="tel"
                 required
                 value={formData.phone}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Enter your phone number"
               />
             </div>
 
             <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
+                Account type
               </label>
               <select
-                name="role"
                 id="role"
+                name="role"
                 required
                 value={formData.role}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
               >
                 <option value="customer">Customer</option>
                 <option value="driver">Driver</option>
@@ -282,41 +259,62 @@ const Register: React.FC = () => {
             )}
 
             <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {isLoading ? 'Creating account...' : 'Create account'}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  Already have an account?
-                </span>
-              </div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Create a password"
+              />
             </div>
 
-            <div className="mt-6">
-              <Link
-                to="/login"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Sign in
-              </Link>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm password
+              </label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                placeholder="Confirm your password"
+              />
             </div>
           </div>
-        </div>
-      </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                'Create account'
+              )}
+            </button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
-};
-
-export default Register; 
+} 

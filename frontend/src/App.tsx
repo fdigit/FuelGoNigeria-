@@ -8,7 +8,7 @@ import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import CustomerDashboard from './pages/dashboard/CustomerDashboard';
-import AdminDashboard from './components/admin/AdminDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import DriverDashboard from './pages/dashboard/DriverDashboard';
 import VendorDashboard from './pages/dashboard/VendorDashboard';
 import { ToastProvider } from './contexts/ToastContext';
