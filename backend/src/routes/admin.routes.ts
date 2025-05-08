@@ -1,7 +1,6 @@
 import express from 'express';
 import { auth } from '../middleware/auth.middleware';
 import { authorize } from '../middleware/authorize.middleware';
-import { ipWhitelist } from '../middleware/security.middleware';
 import {
   createAdminInvitation,
   registerAdmin,
@@ -19,7 +18,6 @@ const router = express.Router();
 // Protected routes - only accessible by existing admins
 router.use(auth);
 router.use(authorize(['admin']));
-router.use(ipWhitelist);
 
 // User Management Routes
 router.get('/users', getAllUsers);

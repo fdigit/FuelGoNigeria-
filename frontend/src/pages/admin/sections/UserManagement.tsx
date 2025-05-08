@@ -20,29 +20,89 @@ export default function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users`, {
+      console.log('Fetching users...');
+      console.log('API URL:', `${process.env.REACT_APP_API_URL}/api/admin/users`);
+      console.log('Auth token:', user?.token ? 'Present' : 'Missing');
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${user?.token}`
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
         }
       });
       
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.message || 'Failed to fetch users');
       }
 
       const data = await response.json();
+      console.log('Received data:', data);
       setUsers(data);
     } catch (error) {
-      toast.error('Failed to load users');
       console.error('Error fetching users:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleApproveUser = async (userId: string) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to approve user');
+      }
+
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, status: 'active' } : user
+      ));
+      toast.success('User approved successfully');
+    } catch (error) {
+      console.error('Error approving user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to approve user');
+    }
+  };
+
+  const handleRejectUser = async (userId: string) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reject user');
+      }
+
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, status: 'rejected' } : user
+      ));
+      toast.success('User rejected successfully');
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to reject user');
+    }
+  };
+
   const handleStatusChange = async (userId: string, newStatus: UserStatus) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/${userId}/status`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -52,7 +112,8 @@ export default function UserManagement() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update user status');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update user status');
       }
 
       setUsers(users.map(user => 
@@ -60,8 +121,34 @@ export default function UserManagement() {
       ));
       toast.success('User status updated successfully');
     } catch (error) {
-      toast.error('Failed to update user status');
       console.error('Error updating user status:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update user status');
+    }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update user role');
+      }
+
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, role: newRole } : user
+      ));
+      toast.success('User role updated successfully');
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update user role');
     }
   };
 
@@ -95,12 +182,6 @@ export default function UserManagement() {
       toast.error('Failed to update user');
       console.error('Error updating user:', error);
     }
-  };
-
-  const handleRoleChange = (userId: string, newRole: UserRole) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, role: newRole } : user
-    ));
   };
 
   const filteredUsers = users.filter(user => {
@@ -204,41 +285,55 @@ export default function UserManagement() {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {user.role}
-                  </span>
+                  <select
+                    value={user.role}
+                    onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  >
+                    <option value="customer">Customer</option>
+                    <option value="driver">Driver</option>
+                    <option value="vendor">Vendor</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                     user.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    user.status === 'inactive' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' :
-                    user.status === 'suspended' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                     user.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                    user.status === 'suspended' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
                     'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                   }`}>
-                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                    {user.status}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => handleEditUser(user)}
-                      className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      Edit
-                    </button>
+                  {user.status === 'pending' ? (
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleApproveUser(user.id)}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectUser(user.id)}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
                     <select
                       value={user.status}
                       onChange={(e) => handleStatusChange(user.id, e.target.value as UserStatus)}
-                      className="text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      className="text-sm border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     >
                       <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
                       <option value="suspended">Suspended</option>
-                      <option value="pending">Pending</option>
                       <option value="rejected">Rejected</option>
                     </select>
-                  </div>
+                  )}
                 </td>
               </motion.tr>
             ))}
