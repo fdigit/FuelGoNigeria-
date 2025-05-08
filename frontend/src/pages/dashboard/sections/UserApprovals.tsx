@@ -88,7 +88,7 @@ export default function UserApprovals() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</h3>
-            <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.phone}</p>
+            <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.phoneNumber}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</h3>

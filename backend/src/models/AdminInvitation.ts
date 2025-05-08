@@ -8,6 +8,8 @@ export interface IAdminInvitation {
   used: boolean;
   usedAt?: Date;
   usedBy?: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IAdminInvitationDocument extends IAdminInvitation, Document {}

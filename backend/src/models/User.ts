@@ -20,6 +20,7 @@ export interface IUserSchema {
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   lastLogin?: Date;
+  rejectionReason?: string;
 }
 
 // Full user document with Mongoose instance methods
@@ -82,6 +83,7 @@ const userSchema = new Schema<IUser>(
     resetPasswordToken: String,
     resetPasswordExpires: Date,
     lastLogin: Date,
+    rejectionReason: String,
   },
   { timestamps: true }
 );

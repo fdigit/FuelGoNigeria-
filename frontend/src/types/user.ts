@@ -1,12 +1,12 @@
 export type UserRole = 'customer' | 'driver' | 'vendor' | 'admin' | 'super_admin';
-export type UserStatus = 'pending' | 'active' | 'inactive' | 'suspended' | 'rejected';
+export type UserStatus = 'active' | 'pending' | 'suspended' | 'rejected';
 
 export interface User {
-  id: string;
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phoneNumber: string;
   status: UserStatus;
   role: UserRole;
   createdAt: string;
@@ -21,6 +21,12 @@ export interface User {
     businessAddress?: string;
     businessPhone?: string;
   };
+}
+
+export interface UserResponse {
+  success: boolean;
+  data: User[];
+  message?: string;
 }
 
 export interface PendingUser extends User {

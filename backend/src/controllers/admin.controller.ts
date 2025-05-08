@@ -4,12 +4,22 @@ import User from '../models/User';
 import AdminInvitation from '../models/AdminInvitation';
 import { sendEmail, emailTemplates } from '../utils/email';
 import { Types } from 'mongoose';
+import { IUser } from '../models/User';
 
 // Create an admin invitation
 export const createAdminInvitation = async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
-    const adminId = req.user?.id;
+    const admin = req.user as IUser;
+
+    if (!admin._id) {
+      return res.status(400).json({ message: 'Invalid admin ID' });
+    }
+
+    const adminId = admin._id as unknown as string;
+    if (!Types.ObjectId.isValid(adminId)) {
+      return res.status(400).json({ message: 'Invalid admin ID format' });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -34,42 +44,35 @@ export const createAdminInvitation = async (req: Request, res: Response) => {
 
     // Create invitation
     const invitation = await AdminInvitation.create({
-      token,
       email,
-      createdBy: adminId,
+      createdBy: new Types.ObjectId(adminId),
+      token,
       expiresAt
     });
 
     // Send invitation email
-    try {
-      await sendEmail({
-        to: email,
-        subject: 'Admin Invitation - FuelGo Nigeria',
-        html: `
-          <h1>Admin Invitation</h1>
-          <p>You have been invited to join FuelGo Nigeria as an administrator.</p>
-          <p>Click the link below to complete your registration:</p>
-          <a href="${process.env.FRONTEND_URL}/admin/register?token=${token}">
-            Complete Registration
-          </a>
-          <p>This invitation will expire in 24 hours.</p>
-        `
-      });
-    } catch (error) {
-      console.error('Failed to send invitation email:', error);
-      // Don't fail the request if email sending fails
-    }
+    const { subject, text, html } = emailTemplates.adminInvitation(invitation.token);
+    await sendEmail({
+      to: email,
+      subject,
+      text,
+      html
+    });
 
     res.status(201).json({
       message: 'Admin invitation sent successfully',
       invitation: {
+        _id: invitation._id,
         email: invitation.email,
-        expiresAt: invitation.expiresAt
+        createdAt: invitation.createdAt
       }
     });
   } catch (error) {
-    console.error('Error creating admin invitation:', error);
-    res.status(500).json({ message: 'Error creating admin invitation' });
+    console.error('Create admin invitation error:', error);
+    res.status(500).json({ 
+      message: 'Error creating admin invitation',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -112,7 +115,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
     res.status(201).json({
       message: 'Admin account created successfully',
       user: {
-        id: admin._id,
+        _id: admin._id,
         firstName: admin.firstName,
         lastName: admin.lastName,
         email: admin.email,
@@ -121,7 +124,10 @@ export const registerAdmin = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Error registering admin:', error);
-    res.status(500).json({ message: 'Error registering admin' });
+    res.status(500).json({ 
+      message: 'Error registering admin',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -149,14 +155,23 @@ export const getAllUsers = async (req: Request, res: Response) => {
     res.json(users);
   } catch (error) {
     console.error('Get all users error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error fetching users',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 // Get user details
 export const getUserDetails = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.userId)
+    const { userId } = req.params;
+
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    const user = await User.findById(userId)
       .select('-password');
     
     if (!user) {
@@ -166,7 +181,10 @@ export const getUserDetails = async (req: Request, res: Response) => {
     res.json(user);
   } catch (error) {
     console.error('Get user details error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error fetching user details',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -179,53 +197,106 @@ export const getPendingUsers = async (req: Request, res: Response) => {
     res.json(pendingUsers);
   } catch (error) {
     console.error('Get pending users error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error fetching pending users',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 // Approve user
 export const approveUser = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.params.userId);
-    if (!user) {
+    const { userId } = req.params;
+
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    // First check if user exists and is not already active
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.status = 'active';
-    await user.save();
+    if (existingUser.status === 'active') {
+      return res.status(400).json({ message: 'User is already active' });
+    }
+
+    // Then update the status
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId },
+      { $set: { status: 'active' } },
+      { new: true, runValidators: false }
+    );
+
+    if (!updatedUser) {
+      return res.status(500).json({ message: 'Failed to update user status' });
+    }
 
     // Send approval email
     try {
-      const { subject, text, html } = emailTemplates.approval(user.firstName);
+      const { subject, text, html } = emailTemplates.approval(updatedUser.firstName);
       await sendEmail({
-        to: user.email,
+        to: updatedUser.email,
         subject,
         text,
         html
       });
     } catch (emailError) {
       console.error('Error sending approval email:', emailError);
+      // Don't fail the request if email fails
     }
 
-    res.json({ message: 'User approved successfully' });
+    res.json({ 
+      message: 'User approved successfully',
+      user: {
+        _id: updatedUser._id,
+        email: updatedUser.email,
+        status: updatedUser.status
+      }
+    });
   } catch (error) {
     console.error('Approve user error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error approving user',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 // Reject user
 export const rejectUser = async (req: Request, res: Response) => {
   try {
+    const { userId } = req.params;
     const { reason } = req.body;
-    const user = await User.findById(req.params.userId);
-    
+
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { _id: userId },
+      { 
+        $set: { 
+          status: 'rejected',
+          rejectionReason: reason 
+        } 
+      },
+      { new: true, runValidators: false }
+    );
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.status = 'rejected';
-    await user.save();
+    if (user.status === 'rejected') {
+      return res.status(400).json({ message: 'User is already rejected' });
+    }
 
     // Send rejection email
     try {
@@ -238,36 +309,61 @@ export const rejectUser = async (req: Request, res: Response) => {
       });
     } catch (emailError) {
       console.error('Error sending rejection email:', emailError);
+      // Don't fail the request if email fails
     }
 
-    res.json({ message: 'User rejected successfully' });
+    res.json({ 
+      message: 'User rejected successfully',
+      user: {
+        _id: user._id,
+        email: user.email,
+        status: user.status
+      }
+    });
   } catch (error) {
     console.error('Reject user error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error rejecting user',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
 // Update user status
 export const updateUserStatus = async (req: Request, res: Response) => {
   try {
+    const { userId } = req.params;
     const { status } = req.body;
-    const userId = new Types.ObjectId(req.params.userId);
-    const user = await User.findById(userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
     }
 
     if (!['active', 'suspended', 'rejected'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     user.status = status;
     await user.save();
 
-    res.json({ message: 'User status updated successfully' });
+    res.json({ 
+      message: 'User status updated successfully',
+      user: {
+        _id: user._id,
+        email: user.email,
+        status: user.status
+      }
+    });
   } catch (error) {
     console.error('Update user status error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error updating user status',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }; 

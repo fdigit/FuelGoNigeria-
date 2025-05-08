@@ -7,101 +7,75 @@ import { generateToken } from '../utils/token';
 
 export const register = async (req: Request, res: Response) => {
   try {
-    console.log('Received registration request:', req.body);
-    
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      password, 
       phone,
       role,
-      // Driver specific
       licenseNumber,
       vehicleType,
       vehiclePlate,
-      // Vendor specific
       businessName,
       businessAddress,
-      businessPhone,
+      businessPhone
     } = req.body;
+
+    console.log('Received registration request:', req.body);
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log('User already exists:', email);
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User with this email already exists' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create user with appropriate status
-    // Admin accounts are automatically approved
-    const status = role === 'admin' ? 'active' : 'pending';
-
-    const user = new User({
+    // Create user with proper field mapping
+    const userData = {
       firstName,
       lastName,
       email,
-      password: hashedPassword,
-      phone,
-      role,
-      status,
-      registrationDate: new Date(),
-      additionalInfo: role === 'driver' ? {
+      password,
+      phoneNumber: phone, // Map phone to phoneNumber
+      role: role || 'customer',
+      status: 'pending',
+      ...(role === 'driver' && {
         licenseNumber,
         vehicleType,
-        vehiclePlate,
-      } : role === 'vendor' ? {
+        vehiclePlate
+      }),
+      ...(role === 'vendor' && {
         businessName,
         businessAddress,
-        businessPhone,
-      } : undefined,
-    });
+        businessPhone
+      })
+    };
 
-    console.log('Saving new user:', { email, role, status });
-    await user.save();
-    console.log('User saved successfully');
+    console.log('Saving new user:', { email: userData.email, role: userData.role, status: userData.status });
 
-    // Try to send welcome email, but don't fail if it doesn't work
-    try {
-      const emailSubject = role === 'admin' 
-        ? 'Welcome to FuelGo Nigeria Admin Portal'
-        : 'Welcome to FuelGo Nigeria';
-      
-      const emailText = role === 'admin'
-        ? `Dear ${firstName},\n\nWelcome to the FuelGo Nigeria Admin Portal. Your account has been created and is ready to use.\n\nBest regards,\nFuelGo Nigeria Team`
-        : `Dear ${firstName},\n\nThank you for registering with FuelGo Nigeria. Your account is pending approval. We will notify you once it's approved.\n\nBest regards,\nFuelGo Nigeria Team`;
+    const user = await User.create(userData);
 
-      await sendEmail({
-        to: email,
-        subject: emailSubject,
-        text: emailText,
-      });
-      console.log('Welcome email sent successfully');
-    } catch (emailError) {
-      console.log('Email sending failed, but registration was successful:', emailError);
-      // Don't throw the error, just log it
-    }
+    // Generate token
+    const token = generateToken(user);
 
     res.status(201).json({
-      message: role === 'admin' 
-        ? 'Admin account created successfully'
-        : 'Registration successful. Please wait for admin approval.',
+      message: 'Registration successful',
       user: {
-        id: user._id,
+        _id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         role: user.role,
         status: user.status
-      }
+      },
+      token
     });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Error during registration',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -143,11 +117,12 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       token,
       user: {
-        id: user._id,
+        _id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         role: user.role,
+        status: user.status
       },
     });
   } catch (error) {
@@ -318,5 +293,34 @@ export const changePassword = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ message: 'Error changing password' });
+  }
+};
+
+// Validate token
+export const validateToken = async (req: Request, res: Response) => {
+  try {
+    // The auth middleware has already verified the token and attached the user
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    // Return the user data without sensitive information
+    res.json({
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status
+      }
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ 
+      message: 'Error validating token',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }; 

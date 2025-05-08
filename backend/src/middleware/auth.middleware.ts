@@ -2,8 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser, UserRole } from '../models/User';
 
-interface JwtPayload {
-  id: string;
+// Ensure JWT_SECRET is defined
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET is not defined in environment variables');
+  process.exit(1);
 }
 
 declare global {
@@ -14,29 +17,43 @@ declare global {
   }
 }
 
-export const auth = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+interface AuthRequest extends Request {
+  user?: IUser;
+}
 
-    if (!token) {
-      return res.status(401).json({ message: 'No authentication token, access denied' });
+export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
-    const user = await User.findById(decoded.id).select('-password') as IUser;
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
 
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { _id: string; role: string };
+    if (!decoded || !decoded._id) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const user = await User.findById(decoded._id).select('-password');
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
-    }
-
-    if (user.status !== 'active') {
-      return res.status(403).json({ message: 'Account is not active' });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is invalid' });
+    console.error('Auth middleware error:', error);
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 

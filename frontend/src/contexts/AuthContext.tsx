@@ -27,14 +27,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    // Check for stored auth data
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
+  // Function to validate token
+  const validateToken = async (token: string) => {
+    try {
+      if (!API_URL) {
+        throw new Error('API URL is not configured');
+      }
+
+      const response = await fetch(`${API_URL}/api/auth/validate-token`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid token');
+      }
+
+      const data = await response.json();
+      return data.user;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return null;
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser.token) {
+            // Validate the token
+            const validatedUser = await validateToken(parsedUser.token);
+            if (validatedUser) {
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+            } else {
+              // Token is invalid, clear storage
+              localStorage.removeItem('user');
+              setUser(null);
+              setIsAuthenticated(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        localStorage.removeItem('user');
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -53,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Server returned non-JSON response');
@@ -125,6 +174,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
+    // Optionally call logout endpoint to invalidate token on server
+    if (API_URL && user?.token) {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json',
+        },
+      }).catch(error => {
+        console.error('Logout error:', error);
+      });
+    }
   };
 
   const clearError = () => setError(null);

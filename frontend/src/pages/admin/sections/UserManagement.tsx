@@ -3,9 +3,13 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../contexts/AuthContext';
 import { User, UserStatus, UserRole } from '../../../types/user';
+import { useToast } from '../../../contexts/ToastContext';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 export default function UserManagement() {
-  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,38 +17,41 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (authUser?.token) {
+      fetchUsers();
+    }
+  }, [authUser?.token]);
 
   const fetchUsers = async () => {
     try {
-      console.log('Fetching users...');
-      console.log('API URL:', `${process.env.REACT_APP_API_URL}/api/admin/users`);
-      console.log('Auth token:', user?.token ? 'Present' : 'Missing');
-      
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users`, {
+      if (!authUser?.token) {
+        throw new Error('Authentication required');
+      }
+
+      console.log('Fetching users with token:', authUser.token); // Debug log
+
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         headers: {
-          'Authorization': `Bearer ${user?.token}`,
+          'Authorization': `Bearer ${authUser.token}`,
           'Content-Type': 'application/json'
         }
       });
-      
-      console.log('Response status:', response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error response:', errorData);
         throw new Error(errorData.message || 'Failed to fetch users');
       }
 
       const data = await response.json();
-      console.log('Received data:', data);
+      console.log('Fetched users:', data); // Debug log
       setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to load users');
+      showToast('error', error instanceof Error ? error.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -52,61 +59,75 @@ export default function UserManagement() {
 
   const handleApproveUser = async (userId: string) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user?.token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to approve user');
+      if (!authUser?.token) {
+        throw new Error('Authentication required');
       }
 
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: 'active' } : user
-      ));
-      toast.success('User approved successfully');
+      const response = await fetch(`${API_URL}/api/admin/approve-user/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authUser.token}`
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error approving user');
+      }
+
+      showToast('success', data.message || 'User approved successfully');
+      fetchUsers();
     } catch (error) {
       console.error('Error approving user:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to approve user');
+      showToast('error', error instanceof Error ? error.message : 'Error approving user');
     }
   };
 
   const handleRejectUser = async (userId: string) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user?.token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to reject user');
+      if (!authUser?.token) {
+        throw new Error('Authentication required');
       }
 
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: 'rejected' } : user
-      ));
-      toast.success('User rejected successfully');
+      if (!rejectionReason.trim()) {
+        showToast('error', 'Please provide a reason for rejection');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/api/admin/reject-user/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authUser.token}`
+        },
+        body: JSON.stringify({ reason: rejectionReason }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error rejecting user');
+      }
+
+      showToast('success', data.message || 'User rejected successfully');
+      setShowRejectionModal(false);
+      setRejectionReason('');
+      fetchUsers();
     } catch (error) {
       console.error('Error rejecting user:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to reject user');
+      showToast('error', error instanceof Error ? error.message : 'Error rejecting user');
     }
   };
 
   const handleStatusChange = async (userId: string, newStatus: UserStatus) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/status`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Authorization': `Bearer ${authUser?.token}`
         },
         body: JSON.stringify({ status: newStatus })
       });
@@ -117,7 +138,7 @@ export default function UserManagement() {
       }
 
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
+        user._id === userId ? { ...user, status: newStatus } : user
       ));
       toast.success('User status updated successfully');
     } catch (error) {
@@ -128,11 +149,11 @@ export default function UserManagement() {
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/admin/users/${userId}/role`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/role`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Authorization': `Bearer ${authUser?.token}`
         },
         body: JSON.stringify({ role: newRole })
       });
@@ -143,7 +164,7 @@ export default function UserManagement() {
       }
 
       setUsers(users.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
+        user._id === userId ? { ...user, role: newRole } : user
       ));
       toast.success('User role updated successfully');
     } catch (error) {
@@ -159,11 +180,11 @@ export default function UserManagement() {
 
   const handleUpdateUser = async (updatedUser: User) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/${updatedUser.id}`, {
+      const response = await fetch(`${API_URL}/api/users/${updatedUser._id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Authorization': `Bearer ${authUser?.token}`
         },
         body: JSON.stringify(updatedUser)
       });
@@ -173,7 +194,7 @@ export default function UserManagement() {
       }
 
       setUsers(users.map(user => 
-        user.id === updatedUser.id ? updatedUser : user
+        user._id === updatedUser._id ? updatedUser : user
       ));
       setIsEditing(false);
       setSelectedUser(null);
@@ -191,6 +212,64 @@ export default function UserManagement() {
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesStatus && matchesRole;
   });
+
+  const renderUserDetails = (user: User) => {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">User Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.firstName} {user.lastName}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.email}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.phoneNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white capitalize">{user.role}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white capitalize">{user.status}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Registration Date</p>
+              <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+          </div>
+
+          {user.status === 'pending' && (
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setSelectedUser(user);
+                  setShowRejectionModal(true);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => handleApproveUser(user._id)}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Approve
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -234,115 +313,66 @@ export default function UserManagement() {
             <option value="driver">Driver</option>
             <option value="vendor">Vendor</option>
             <option value="admin">Admin</option>
-            <option value="super_admin">Super Admin</option>
           </select>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-700">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                User
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredUsers.map((user) => (
-              <motion.tr
-                key={user.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700"
-              >
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
-                        <span className="text-primary-600 dark:text-primary-200 text-lg">
-                          {user.firstName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredUsers.length === 0 ? (
+              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                No users found
+              </div>
+            ) : (
+              filteredUsers.map(user => (
+                <motion.div
+                  key={user._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  onClick={() => setSelectedUser(user)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
                         {user.firstName} {user.lastName}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {user.email}
-                      </div>
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
                     </div>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      user.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                      user.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                      user.status === 'suspended' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {user.status}
+                    </span>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                    className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  >
-                    <option value="customer">Customer</option>
-                    <option value="driver">Driver</option>
-                    <option value="vendor">Vendor</option>
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    user.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                    user.status === 'suspended' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  }`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  {user.status === 'pending' ? (
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleApproveUser(user.id)}
-                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleRejectUser(user.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      value={user.status}
-                      onChange={(e) => handleStatusChange(user.id, e.target.value as UserStatus)}
-                      className="text-sm border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    >
-                      <option value="active">Active</option>
-                      <option value="suspended">Suspended</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  )}
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
+                </motion.div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          {selectedUser ? (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+            >
+              {renderUserDetails(selectedUser)}
+            </motion.div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center text-gray-500 dark:text-gray-400">
+              Select a user to view details
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Edit User Modal */}
-      {isEditing && selectedUser && (
+      {/* Rejection Modal */}
+      {showRejectionModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -350,74 +380,37 @@ export default function UserManagement() {
             className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
           >
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Edit User
+              Reject User
             </h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  First Name
+                  Reason for Rejection
                 </label>
-                <input
-                  type="text"
-                  value={selectedUser.firstName}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, firstName: e.target.value })}
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  rows={4}
+                  placeholder="Enter reason for rejection..."
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={selectedUser.lastName}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, lastName: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={selectedUser.email}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Role
-                </label>
-                <select
-                  value={selectedUser.role}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value as UserRole })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="driver">Driver</option>
-                  <option value="vendor">Vendor</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
               </div>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
               <button
                 onClick={() => {
-                  setIsEditing(false);
-                  setSelectedUser(null);
+                  setShowRejectionModal(false);
+                  setRejectionReason('');
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleUpdateUser(selectedUser)}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                onClick={() => handleRejectUser(selectedUser._id)}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                Save Changes
+                Reject User
               </button>
             </div>
           </motion.div>

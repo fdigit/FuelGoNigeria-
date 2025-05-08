@@ -7,6 +7,7 @@ import {
   rejectUser,
   registerAdmin,
   changePassword,
+  validateToken
 } from '../controllers/auth.controller';
 import { auth } from '../middleware/auth.middleware';
 import { authorize } from '../middleware/authorize.middleware';
@@ -26,5 +27,6 @@ router.get('/pending-users', auth, authorize(['admin']), getPendingUsers);
 router.post('/approve-user/:userId', auth, authorize(['admin']), approveUser);
 router.post('/reject-user/:userId', auth, authorize(['admin']), rejectUser);
 router.post('/change-password', auth, changePassword);
+router.get('/validate-token', auth, validateToken);
 
 export default router; 

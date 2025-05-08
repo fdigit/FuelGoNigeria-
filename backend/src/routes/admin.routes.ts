@@ -23,8 +23,8 @@ router.use(authorize(['admin']));
 router.get('/users', getAllUsers);
 router.get('/users/:userId', getUserDetails);
 router.get('/users/pending', getPendingUsers);
-router.post('/users/:userId/approve', approveUser);
-router.post('/users/:userId/reject', rejectUser);
+router.post('/approve-user/:userId', approveUser);
+router.post('/reject-user/:userId', rejectUser);
 router.patch('/users/:userId/status', updateUserStatus);
 
 // Admin Management Routes

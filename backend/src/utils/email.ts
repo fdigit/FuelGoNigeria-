@@ -76,6 +76,22 @@ export const emailTemplates = {
       </div>
     `,
   }),
+
+  adminInvitation: (token: string) => ({
+    subject: 'Admin Invitation - FuelGo Nigeria',
+    text: `You have been invited to join FuelGo Nigeria as an administrator.\n\nClick the link below to complete your registration:\n${process.env.FRONTEND_URL}/admin/register?token=${token}\n\nThis invitation will expire in 24 hours.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Admin Invitation</h2>
+        <p>You have been invited to join FuelGo Nigeria as an administrator.</p>
+        <p>Click the link below to complete your registration:</p>
+        <a href="${process.env.FRONTEND_URL}/admin/register?token=${token}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 4px;">
+          Complete Registration
+        </a>
+        <p>This invitation will expire in 24 hours.</p>
+      </div>
+    `,
+  }),
 };
 
 // Email templates
