@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import CustomerDashboard from './pages/dashboard/CustomerDashboard';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import DriverDashboard from './pages/dashboard/DriverDashboard';
-import VendorDashboard from './pages/dashboard/VendorDashboard';
+import DashboardRouter from './components/dashboard/DashboardRouter';
+import Profile from './pages/dashboard/Profile';
 import { ToastProvider } from './contexts/ToastContext';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
@@ -141,6 +139,35 @@ function HomePage() {
   );
 }
 
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<Layout><HomePage /></Layout>} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Protected routes */}
+      <Route 
+        path="/dashboard/*" 
+        element={
+          <ProtectedRoute roles={['customer', 'admin', 'driver', 'vendor']}>
+            <Layout>
+              <Routes>
+                <Route index element={<DashboardRouter />} />
+                <Route path="profile" element={<Profile />} />
+              </Routes>
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Catch all route */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <ChakraProvider theme={theme}>
@@ -159,44 +186,7 @@ function App() {
               pauseOnHover
               theme="light"
             />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Layout><HomePage /></Layout>} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* Protected routes */}
-              <Route 
-                path="/dashboard/*" 
-                element={
-                  <ProtectedRoute roles={['customer', 'admin', 'driver', 'vendor']}>
-                    <Layout>
-                      <Routes>
-                        <Route index element={<CustomerDashboard />} />
-                        <Route path="admin/*" element={
-                          <ProtectedRoute roles={['admin']}>
-                            <AdminDashboard />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="driver" element={
-                          <ProtectedRoute roles={['driver']}>
-                            <DriverDashboard />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="vendor" element={
-                          <ProtectedRoute roles={['vendor']}>
-                            <VendorDashboard />
-                          </ProtectedRoute>
-                        } />
-                      </Routes>
-                    </Layout>
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* Catch all route */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <AppRoutes />
           </Router>
         </ToastProvider>
       </AuthProvider>

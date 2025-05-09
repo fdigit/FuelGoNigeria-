@@ -194,16 +194,14 @@ export default function Navbar({ onSearch, onLocationSelect }: NavbarProps) {
                       className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1"
                     >
                       <Link
-                        to={user?.role === 'admin' ? '/dashboard/admin' : 
-                            user?.role === 'driver' ? '/dashboard/driver' :
-                            user?.role === 'vendor' ? '/dashboard/vendor' : '/dashboard'}
+                        to="/dashboard"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setShowUserMenu(false)}
                       >
                         Dashboard
                       </Link>
                       <Link
-                        to="/profile"
+                        to="/dashboard/profile"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setShowUserMenu(false)}
                       >
@@ -298,16 +296,14 @@ export default function Navbar({ onSearch, onLocationSelect }: NavbarProps) {
               {isAuthenticated ? (
                 <>
                   <Link
-                    to={user?.role === 'admin' ? '/dashboard/admin' : 
-                        user?.role === 'driver' ? '/dashboard/driver' :
-                        user?.role === 'vendor' ? '/dashboard/vendor' : '/dashboard'}
+                    to="/dashboard"
                     className="block w-full text-center px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
-                    to="/profile"
+                    to="/dashboard/profile"
                     className="block w-full text-center px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

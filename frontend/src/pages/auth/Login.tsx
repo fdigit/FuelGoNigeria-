@@ -27,17 +27,11 @@ export default function Login() {
       // Redirect based on role
       switch (user.role) {
         case 'customer':
-          navigate('/dashboard');
-          break;
         case 'driver':
-          navigate('/driver');
-          break;
         case 'vendor':
-          navigate('/vendor');
-          break;
         case 'admin':
         case 'super_admin':
-          navigate('/admin');
+          navigate('/dashboard');
           break;
         default:
           navigate('/dashboard');
