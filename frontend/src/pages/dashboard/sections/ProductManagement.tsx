@@ -12,34 +12,8 @@ interface Product {
 }
 
 export default function ProductManagement() {
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: '1',
-      name: 'Premium (PMS)',
-      type: 'PMS',
-      price: 650,
-      stock: 5000,
-      isEnabled: true,
-    },
-    {
-      id: '2',
-      name: 'Diesel (AGO)',
-      type: 'AGO',
-      price: 620,
-      stock: 3000,
-      isEnabled: true,
-    },
-    {
-      id: '3',
-      name: 'Kerosene (DPK)',
-      type: 'DPK',
-      price: 580,
-      stock: 2000,
-      isEnabled: true,
-    },
-  ]);
-
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
   const { showToast } = useToast();
 
   const handlePriceChange = (id: string, newPrice: number) => {
@@ -69,7 +43,6 @@ export default function ProductManagement() {
   const handleSaveChanges = () => {
     // In a real app, you would make an API call to save the changes
     showToast('success', 'Product changes saved successfully!');
-    setEditingProduct(null);
   };
 
   return (

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
 
-interface VendorProfile {
+interface VendorProfileData {
   id: string;
   name: string;
   email: string;
@@ -28,7 +28,7 @@ interface VendorProfile {
 }
 
 export default function VendorProfile() {
-  const [profile, setProfile] = useState<VendorProfile>({
+  const [profile, setProfile] = useState<VendorProfileData>({
     id: 'VEN001',
     name: 'FuelGo Station',
     email: 'contact@fuelgostation.com',
@@ -56,7 +56,7 @@ export default function VendorProfile() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState<VendorProfile>(profile);
+  const [editedProfile, setEditedProfile] = useState<VendorProfileData>(profile);
   const { showToast } = useToast();
 
   const handleInputChange = (

@@ -22,44 +22,8 @@ interface Driver {
 }
 
 export default function OrderManagement() {
-  const [orders, setOrders] = useState<Order[]>([
-    {
-      id: 'ORD001',
-      customerName: 'John Doe',
-      fuelType: 'Premium (PMS)',
-      quantity: 20,
-      total: 13000,
-      status: 'pending',
-      location: '123 Main Street, Lagos',
-      createdAt: '2024-03-20T10:30:00',
-    },
-    {
-      id: 'ORD002',
-      customerName: 'Jane Smith',
-      fuelType: 'Diesel (AGO)',
-      quantity: 15,
-      total: 9300,
-      status: 'in_progress',
-      location: '456 Park Avenue, Lagos',
-      createdAt: '2024-03-20T09:15:00',
-      assignedDriver: 'DRV001',
-    },
-  ]);
-
-  const [drivers, setDrivers] = useState<Driver[]>([
-    {
-      id: 'DRV001',
-      name: 'Michael Johnson',
-      status: 'busy',
-      currentLocation: '456 Park Avenue, Lagos',
-    },
-    {
-      id: 'DRV002',
-      name: 'Sarah Williams',
-      status: 'available',
-      currentLocation: '789 Victoria Island, Lagos',
-    },
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [drivers] = useState<Driver[]>([]);
 
   const { showToast } = useToast();
 

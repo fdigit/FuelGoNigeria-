@@ -12,7 +12,7 @@ import Wallet from './sections/Wallet';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function CustomerDashboard() {
-  const { user } = useAuth();
+  const { logout } = useAuth();
   const [activeSection, setActiveSection] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 

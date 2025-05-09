@@ -2,22 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
 
-interface EmergencyRequest {
-  id: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
-  fuelType: string;
-  quantity: number;
-  location: {
-    address: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-  };
-  requestedAt: string;
-  estimatedArrival?: string;
-}
-
 export default function EmergencyRequest() {
   const [isRequesting, setIsRequesting] = useState(false);
   const [fuelType, setFuelType] = useState('PMS');

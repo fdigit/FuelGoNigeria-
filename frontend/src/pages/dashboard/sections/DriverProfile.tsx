@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
 
-interface DriverProfile {
+interface DriverProfileData {
   id: string;
   name: string;
   email: string;
@@ -24,7 +24,7 @@ interface DriverProfile {
 }
 
 export default function DriverProfile() {
-  const [profile, setProfile] = useState<DriverProfile>({
+  const [profile, setProfile] = useState<DriverProfileData>({
     id: 'DRV001',
     name: 'John Doe',
     email: 'john.doe@example.com',
@@ -46,11 +46,11 @@ export default function DriverProfile() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editedProfile, setEditedProfile] = useState<DriverProfile>(profile);
+  const [editedProfile, setEditedProfile] = useState<DriverProfileData>(profile);
   const { showToast } = useToast();
 
   const handleInputChange = (
-    field: keyof DriverProfile,
+    field: keyof DriverProfileData,
     value: string | { name: string; phone: string; relationship: string }
   ) => {
     setEditedProfile((prev) => ({
@@ -60,7 +60,7 @@ export default function DriverProfile() {
   };
 
   const handleEmergencyContactChange = (
-    field: keyof DriverProfile['emergencyContact'],
+    field: keyof DriverProfileData['emergencyContact'],
     value: string
   ) => {
     setEditedProfile((prev) => ({

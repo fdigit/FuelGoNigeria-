@@ -74,8 +74,11 @@ function HomePage() {
   }, []);
 
   const handleLocationSelect = (location: string) => {
-    setSelectedLocation(location);
-    showToast('info', `Showing vendors in ${location}`);
+    // Only update if the location has changed
+    if (location !== selectedLocation) {
+      setSelectedLocation(location);
+      showToast('info', `Showing vendors in ${location}`);
+    }
   };
 
   const handleFilterChange = (filters: any) => {
@@ -164,34 +167,29 @@ function App() {
 
               {/* Protected routes */}
               <Route 
-                path="/dashboard" 
+                path="/dashboard/*" 
                 element={
-                  <ProtectedRoute roles={['customer']}>
-                    <Layout><CustomerDashboard /></Layout>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/admin/*" 
-                element={
-                  <ProtectedRoute roles={['admin']}>
-                    <Layout><AdminDashboard /></Layout>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/driver" 
-                element={
-                  <ProtectedRoute roles={['driver']}>
-                    <Layout><DriverDashboard /></Layout>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/vendor" 
-                element={
-                  <ProtectedRoute roles={['vendor']}>
-                    <Layout><VendorDashboard /></Layout>
+                  <ProtectedRoute roles={['customer', 'admin', 'driver', 'vendor']}>
+                    <Layout>
+                      <Routes>
+                        <Route index element={<CustomerDashboard />} />
+                        <Route path="admin/*" element={
+                          <ProtectedRoute roles={['admin']}>
+                            <AdminDashboard />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="driver" element={
+                          <ProtectedRoute roles={['driver']}>
+                            <DriverDashboard />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="vendor" element={
+                          <ProtectedRoute roles={['vendor']}>
+                            <VendorDashboard />
+                          </ProtectedRoute>
+                        } />
+                      </Routes>
+                    </Layout>
                   </ProtectedRoute>
                 } 
               />

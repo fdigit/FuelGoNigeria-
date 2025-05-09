@@ -5,6 +5,10 @@ import { useToast } from '../../contexts/ToastContext';
 import adminService from '../../services/admin.service';
 import type { AdminInvitation } from '../../services/api';
 
+// Type the icons as React components
+const PlusIcon = FaPlus as unknown as React.FC;
+const TrashIcon = FaTrash as unknown as React.FC;
+
 const AdminInvitation: React.FC = () => {
   const { showToast } = useToast();
   const [invitations, setInvitations] = useState<AdminInvitation[]>([]);
@@ -62,8 +66,8 @@ const AdminInvitation: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Admin Invitations</h2>
         <Button variant="primary" onClick={() => setShowModal(true)}>
-          <FaPlus className="me-2" />
-          New Invitation
+          <PlusIcon />
+          <span className="ms-2">New Invitation</span>
         </Button>
       </div>
 
@@ -92,7 +96,7 @@ const AdminInvitation: React.FC = () => {
                   size="sm"
                   onClick={() => handleDelete(invitation._id)}
                 >
-                  <FaTrash />
+                  <TrashIcon />
                 </Button>
               </td>
             </tr>

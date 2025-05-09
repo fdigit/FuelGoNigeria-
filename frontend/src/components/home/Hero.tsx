@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MapPinIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
@@ -11,11 +11,7 @@ export default function Hero({ onLocationSelect }: HeroProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    detectLocation();
-  }, []);
-
-  const detectLocation = () => {
+  const detectLocation = useCallback(() => {
     setIsLoading(true);
     setError('');
 
@@ -28,7 +24,6 @@ export default function Hero({ onLocationSelect }: HeroProps) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const { latitude, longitude } = position.coords;
           // In a real app, you would use a geocoding service here
           // For now, we'll use a mock response
           const mockLocation = 'Lagos, Nigeria';
@@ -45,7 +40,11 @@ export default function Hero({ onLocationSelect }: HeroProps) {
         setIsLoading(false);
       }
     );
-  };
+  }, [onLocationSelect]);
+
+  useEffect(() => {
+    detectLocation();
+  }, []);
 
   return (
     <div className="relative bg-gradient-to-r from-primary-600 to-primary-800 dark:from-primary-800 dark:to-primary-900">

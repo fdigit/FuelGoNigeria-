@@ -2,57 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
 
-interface Location {
+// Base location type with common properties
+interface BaseLocation {
   latitude: number;
   longitude: number;
   timestamp: string;
   address: string;
 }
 
-interface LocationHistory {
+// Extended type for location history records
+interface LocationRecord extends BaseLocation {
   id: string;
   startTime: string;
   endTime: string;
   distance: number;
   duration: string;
-  status: 'active' | 'completed';
 }
 
 export default function LiveLocation() {
   const [isSharing, setIsSharing] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([
-    {
-      id: 'LOC001',
-      startTime: '2024-02-20 08:00',
-      endTime: '2024-02-20 17:00',
-      distance: 45.5,
-      duration: '9h 0m',
-      status: 'completed',
-    },
-    {
-      id: 'LOC002',
-      startTime: '2024-02-21 08:00',
-      endTime: '2024-02-21 17:00',
-      distance: 38.2,
-      duration: '9h 0m',
-      status: 'completed',
-    },
-    {
-      id: 'LOC003',
-      startTime: '2024-02-22 08:00',
-      endTime: '2024-02-22 17:00',
-      distance: 42.7,
-      duration: '9h 0m',
-      status: 'completed',
-    },
-  ]);
+  const [currentLocation, setCurrentLocation] = useState<BaseLocation | null>(null);
+  const [locationHistory] = useState<LocationRecord[]>([]);
 
   const { showToast } = useToast();
 
   useEffect(() => {
     // In a real app, this would connect to a WebSocket or use a location service
-    const mockLocation: Location = {
+    const mockLocation: BaseLocation = {
       latitude: 6.5244,
       longitude: 3.3792,
       timestamp: new Date().toISOString(),
