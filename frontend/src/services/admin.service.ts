@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
+import type { AdminInvitation } from './api';
 
 const adminService = {
   // User Management
@@ -34,15 +35,19 @@ const adminService = {
   },
 
   // Admin Management
-  createAdminInvitation: async (email: string) => {
-    const response = await axios.post(`${API_URL}/admin/invite`, { email });
+  createAdminInvitation: async (email: string, role: string = 'admin'): Promise<AdminInvitation> => {
+    const response = await axios.post<AdminInvitation>(`${API_URL}/admin/invite`, { email, role });
     return response.data;
   },
 
-  listAdminInvitations: async () => {
-    const response = await axios.get(`${API_URL}/admin/invitations`);
+  listAdminInvitations: async (): Promise<AdminInvitation[]> => {
+    const response = await axios.get<AdminInvitation[]>(`${API_URL}/admin/invitations`);
     return response.data;
   },
+
+  deleteAdminInvitation: async (id: string): Promise<void> => {
+    await axios.delete(`${API_URL}/admin/invitations/${id}`);
+  }
 };
 
 export default adminService; 

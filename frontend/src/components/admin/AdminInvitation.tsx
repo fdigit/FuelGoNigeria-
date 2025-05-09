@@ -1,49 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  FormControl,
-  FormLabel,
-  Input,
-  useToast,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Badge,
-} from '@chakra-ui/react';
+import { Table, Button, Modal, Form } from 'react-bootstrap';
+import { FaPlus, FaTrash } from 'react-icons/fa';
+import { useToast } from '../../contexts/ToastContext';
 import adminService from '../../services/admin.service';
-
-interface AdminInvitation {
-  _id: string;
-  email: string;
-  token: string;
-  expiresAt: string;
-  used: boolean;
-  usedAt?: string;
-  createdAt: string;
-}
+import type { AdminInvitation } from '../../services/api';
 
 const AdminInvitation: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const { showToast } = useToast();
   const [invitations, setInvitations] = useState<AdminInvitation[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const toast = useToast();
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('admin');
 
   const fetchInvitations = async () => {
     try {
-      const data = await adminService.listAdminInvitations();
-      setInvitations(data);
+      setLoading(true);
+      const response = await adminService.listAdminInvitations();
+      setInvitations(response);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch admin invitations',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      showToast('error', 'Failed to load admin invitations');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,89 +29,109 @@ const AdminInvitation: React.FC = () => {
     fetchInvitations();
   }, []);
 
-  const handleCreateInvitation = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
     try {
-      setIsLoading(true);
-      await adminService.createAdminInvitation(email);
-      toast({
-        title: 'Success',
-        description: 'Admin invitation sent successfully',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
+      await adminService.createAdminInvitation(email, role);
+      setShowModal(false);
       setEmail('');
+      setRole('admin');
       fetchInvitations();
+      showToast('success', 'Invitation sent successfully');
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create admin invitation',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    } finally {
-      setIsLoading(false);
+      showToast('error', 'Failed to create invitation');
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+  const handleDelete = async (id: string) => {
+    try {
+      await adminService.deleteAdminInvitation(id);
+      fetchInvitations();
+      showToast('success', 'Invitation deleted successfully');
+    } catch (error) {
+      showToast('error', 'Failed to delete invitation');
+    }
   };
 
-  return (
-    <Box p={4}>
-      <form onSubmit={handleCreateInvitation}>
-        <FormControl mb={4}>
-          <FormLabel>Email Address</FormLabel>
-          <Input
-            type="email"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            placeholder="Enter email address"
-            required
-          />
-        </FormControl>
-        <Button
-          type="submit"
-          colorScheme="blue"
-          isLoading={isLoading}
-          loadingText="Sending Invitation"
-        >
-          Send Invitation
-        </Button>
-      </form>
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
-      <Box mt={8}>
-        <Table variant="simple">
-          <Thead>
-            <Tr>
-              <Th>Email</Th>
-              <Th>Status</Th>
-              <Th>Expires At</Th>
-              <Th>Created At</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {invitations.map((invitation) => (
-              <Tr key={invitation._id}>
-                <Td>{invitation.email}</Td>
-                <Td>
-                  <Badge colorScheme={invitation.used ? 'green' : 'yellow'}>
-                    {invitation.used ? 'Used' : 'Pending'}
-                  </Badge>
-                </Td>
-                <Td>{formatDate(invitation.expiresAt)}</Td>
-                <Td>{formatDate(invitation.createdAt)}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </Box>
-    </Box>
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Admin Invitations</h2>
+        <Button variant="primary" onClick={() => setShowModal(true)}>
+          <FaPlus className="me-2" />
+          New Invitation
+        </Button>
+      </div>
+
+      <Table striped bordered hover>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Expires</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {invitations.map((invitation) => (
+            <tr key={invitation._id}>
+              <td>{invitation.email}</td>
+              <td>{invitation.role}</td>
+              <td>{invitation.status}</td>
+              <td>{new Date(invitation.createdAt).toLocaleDateString()}</td>
+              <td>{new Date(invitation.expiresAt).toLocaleDateString()}</td>
+              <td>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => handleDelete(invitation._id)}
+                >
+                  <FaTrash />
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>New Admin Invitation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Role</Form.Label>
+              <Form.Select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+              >
+                <option value="admin">Admin</option>
+                <option value="super_admin">Super Admin</option>
+              </Form.Select>
+            </Form.Group>
+            <Button type="submit" variant="primary">
+              Send Invitation
+            </Button>
+          </Form>
+        </Modal.Body>
+      </Modal>
+    </div>
   );
 };
 
