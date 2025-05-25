@@ -1,3 +1,10 @@
+// Export all types from vendor.ts
+export type { Product, Vendor, VendorDisplay } from './vendor';
+
+// Export all types from user.ts
+export * from './user';
+
+// Common interfaces
 export interface FuelType {
   type: string;
   price: number;
@@ -15,15 +22,13 @@ export interface Review {
   userName: string;
 }
 
-export interface Vendor {
-  id: string;
+export interface Contact {
   name: string;
-  location: Location;
-  rating: number;
-  fuelTypes: FuelType[];
-  deliveryTime: string;
-  isTopVendor: boolean;
-  isFastDelivery: boolean;
-  hasHotPrice: boolean;
-  reviews: Review[];
+  email: string;
+  phone: string;
+}
+
+export interface PriceRange {
+  min: number;
+  max: number;
 } 

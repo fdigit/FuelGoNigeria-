@@ -4,6 +4,8 @@ import { authorize } from '../middleware/authorize.middleware';
 import multer from 'multer';
 import path from 'path';
 import productRoutes from './vendor/products';
+import Vendor from '../models/Vendor';
+import Product from '../models/Product';
 
 const router = express.Router();
 
@@ -19,6 +21,31 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Public routes
+router.get('/', async (_req, res) => {
+  try {
+    console.log('Fetching vendors...');
+    const vendors = await Vendor.find()
+      .populate('user_id', 'firstName lastName email phoneNumber')
+      .select('-documents -bank_info');
+    // Fetch products for each vendor
+    const vendorsWithProducts = await Promise.all(
+      vendors.map(async (vendor) => {
+        const products = await Product.find({ vendor_id: vendor._id, status: 'available' });
+        return {
+          ...vendor.toObject(),
+          products,
+        };
+      })
+    );
+    console.log('Found vendors with products:', vendorsWithProducts);
+    res.json(vendorsWithProducts);
+  } catch (error) {
+    console.error('Error fetching vendors:', error);
+    res.status(500).json({ message: 'Error fetching vendors' });
+  }
+});
 
 // Protected routes - require authentication and vendor authorization
 router.use(auth);

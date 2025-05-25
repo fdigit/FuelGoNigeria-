@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
+import Vendor from '../models/Vendor';
 import { sendEmail } from '../utils/email';
 import { generateToken } from '../utils/token';
 
@@ -22,12 +23,41 @@ export const register = async (req: Request, res: Response) => {
       businessPhone
     } = req.body;
 
-    console.log('Received registration request:', req.body);
+    console.log('Received registration request:', { ...req.body, password: '[REDACTED]' });
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !phone) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['firstName', 'lastName', 'email', 'password', 'phone']
+      });
+    }
+
+    // Validate role-specific fields
+    if (role === 'driver' && (!licenseNumber || !vehicleType || !vehiclePlate)) {
+      return res.status(400).json({
+        message: 'Missing required fields for driver registration',
+        required: ['licenseNumber', 'vehicleType', 'vehiclePlate']
+      });
+    }
+
+    if (role === 'vendor' && (!businessName || !businessAddress)) {
+      return res.status(400).json({
+        message: 'Missing required fields for vendor registration',
+        required: ['businessName', 'businessAddress']
+      });
+    }
+
+    // Check if user already exists with email
+    const existingUserByEmail = await User.findOne({ email });
+    if (existingUserByEmail) {
       return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    // Check if user already exists with phone number
+    const existingUserByPhone = await User.findOne({ phoneNumber: phone });
+    if (existingUserByPhone) {
+      return res.status(400).json({ message: 'User with this phone number already exists' });
     }
 
     // Create user with proper field mapping
@@ -35,8 +65,8 @@ export const register = async (req: Request, res: Response) => {
       firstName,
       lastName,
       email,
-      password,
-      phoneNumber: phone, // Map phone to phoneNumber
+      password, // Let the pre-save hook handle password hashing
+      phoneNumber: phone,
       role: role || 'customer',
       status: 'pending',
       ...(role === 'driver' && {
@@ -55,6 +85,34 @@ export const register = async (req: Request, res: Response) => {
 
     const user = await User.create(userData);
 
+    // If user is a vendor, create vendor record
+    if (role === 'vendor') {
+      const vendorData = {
+        user_id: user._id,
+        business_name: businessName,
+        address: {
+          street: businessAddress,
+          city: 'Lagos', // Default to Lagos for now
+          state: 'Lagos',
+          coordinates: [3.4219, 6.4281] // Default coordinates for Lagos
+        },
+        fuel_types: ['PMS', 'Diesel'], // Default fuel types
+        operating_hours: {
+          open: '06:00',
+          close: '22:00',
+          days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        },
+        verification_status: 'pending',
+        bank_info: {
+          bank_name: 'TBD',
+          account_number: 'TBD',
+          account_name: businessName
+        }
+      };
+
+      await Vendor.create(vendorData);
+    }
+
     // Generate token
     const token = generateToken(user);
 
@@ -72,6 +130,26 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    if (error instanceof Error) {
+      // Handle specific error types
+      if (error.name === 'ValidationError') {
+        return res.status(400).json({ 
+          message: 'Validation error',
+          errors: Object.values((error as any).errors).map((err: any) => err.message)
+        });
+      }
+      if (error.name === 'MongoError' && (error as any).code === 11000) {
+        // Check which field caused the duplicate key error
+        const keyValue = (error as any).keyValue;
+        if (keyValue.email) {
+          return res.status(400).json({ message: 'Email already exists' });
+        }
+        if (keyValue.phoneNumber) {
+          return res.status(400).json({ message: 'Phone number already exists' });
+        }
+        return res.status(400).json({ message: 'Duplicate key error' });
+      }
+    }
     res.status(500).json({ 
       message: 'Error during registration',
       error: error instanceof Error ? error.message : 'Unknown error'

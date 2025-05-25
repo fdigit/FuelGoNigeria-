@@ -1,110 +1,5 @@
 import { Vendor } from '../types';
 
-export interface FuelStation {
-  id: string;
-  name: string;
-  location: {
-    address: string;
-    city: string;
-    coordinates: {
-      lat: number;
-      lng: number;
-    };
-  };
-  rating: number;
-  reviews: number;
-  fuelTypes: {
-    type: string;
-    price: number;
-    unit: string;
-  }[];
-  services: string[];
-  operatingHours: string;
-  contact: {
-    phone: string;
-    email: string;
-  };
-  images: string[];
-}
-
-export const fuelStations: FuelStation[] = [
-  {
-    id: '1',
-    name: 'Shell Express',
-    location: {
-      address: '123 Victoria Island Road',
-      city: 'Lagos',
-      coordinates: { lat: 6.4281, lng: 3.4219 },
-    },
-    rating: 4.5,
-    reviews: 128,
-    fuelTypes: [
-      { type: 'Premium', price: 650, unit: 'NGN/L' },
-      { type: 'Regular', price: 580, unit: 'NGN/L' },
-      { type: 'Diesel', price: 620, unit: 'NGN/L' },
-    ],
-    services: ['24/7 Service', 'Air Pump', 'Car Wash', 'Convenience Store'],
-    operatingHours: '24/7',
-    contact: {
-      phone: '+234 801 234 5678',
-      email: 'shell.express@example.com',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    ],
-  },
-  {
-    id: '2',
-    name: 'Total Energies',
-    location: {
-      address: '45 Lekki Expressway',
-      city: 'Lagos',
-      coordinates: { lat: 6.4281, lng: 3.4219 },
-    },
-    rating: 4.3,
-    reviews: 95,
-    fuelTypes: [
-      { type: 'Premium', price: 645, unit: 'NGN/L' },
-      { type: 'Regular', price: 575, unit: 'NGN/L' },
-      { type: 'Diesel', price: 615, unit: 'NGN/L' },
-    ],
-    services: ['24/7 Service', 'Air Pump', 'Car Wash'],
-    operatingHours: '24/7',
-    contact: {
-      phone: '+234 802 345 6789',
-      email: 'total.energies@example.com',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    ],
-  },
-  {
-    id: '3',
-    name: 'Mobil Super',
-    location: {
-      address: '78 Ikoyi Road',
-      city: 'Lagos',
-      coordinates: { lat: 6.4281, lng: 3.4219 },
-    },
-    rating: 4.7,
-    reviews: 156,
-    fuelTypes: [
-      { type: 'Premium', price: 655, unit: 'NGN/L' },
-      { type: 'Regular', price: 585, unit: 'NGN/L' },
-      { type: 'Diesel', price: 625, unit: 'NGN/L' },
-    ],
-    services: ['24/7 Service', 'Air Pump', 'Car Wash', 'Convenience Store', 'ATM'],
-    operatingHours: '24/7',
-    contact: {
-      phone: '+234 803 456 7890',
-      email: 'mobil.super@example.com',
-    },
-    images: [
-      'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    ],
-  },
-];
-
 export const fuelPrices = {
   premium: {
     min: 575,
@@ -154,56 +49,106 @@ export const mockVendors: Vendor[] = [
   {
     id: '1',
     name: 'Quick Fuel Station',
-    location: {
-      city: 'Lagos',
-      address: 'Victoria Island'
-    },
+    location: 'Lagos, Victoria Island',
     rating: 4.5,
-    fuelTypes: [
-      { type: 'Petrol (PMS)', price: 650 },
-      { type: 'Diesel (AGO)', price: 680 }
-    ],
-    deliveryTime: 'Within 30 mins',
+    totalRatings: 128,
     isTopVendor: true,
-    isFastDelivery: true,
+    hasFastDelivery: true,
     hasHotPrice: true,
-    reviews: [
+    priceRange: {
+      min: 650,
+      max: 680
+    },
+    deliveryTime: 'Within 30 mins',
+    fuelTypes: ['Petrol (PMS)', 'Diesel (AGO)'],
+    contact: {
+      name: 'John Doe',
+      email: 'john@quickfuel.com',
+      phone: '+2341234567890'
+    },
+    products: [
       {
-        id: '1',
-        rating: 5,
-        comment: 'Fast delivery and great service!',
-        userName: 'John D.'
+        _id: 'p1',
+        type: 'PMS',
+        name: 'Premium Petrol',
+        description: 'High-quality premium petrol',
+        price_per_unit: 650,
+        unit: 'litre',
+        available_qty: 1000,
+        min_order_qty: 5,
+        max_order_qty: 100,
+        status: 'available',
+        specifications: {
+          octane_rating: 95
+        }
       },
       {
-        id: '2',
-        rating: 4,
-        comment: 'Good prices and reliable delivery.',
-        userName: 'Sarah M.'
+        _id: 'p2',
+        type: 'Diesel',
+        name: 'Automotive Diesel',
+        description: 'High-quality diesel fuel',
+        price_per_unit: 680,
+        unit: 'litre',
+        available_qty: 800,
+        min_order_qty: 5,
+        max_order_qty: 100,
+        status: 'available',
+        specifications: {
+          cetane_number: 51
+        }
       }
     ]
   },
   {
     id: '2',
     name: 'City Gas Station',
-    location: {
-      city: 'Lagos',
-      address: 'Ikeja'
-    },
+    location: 'Lagos, Ikeja',
     rating: 4.2,
-    fuelTypes: [
-      { type: 'Petrol (PMS)', price: 645 },
-      { type: 'Diesel (AGO)', price: 675 }
-    ],
-    deliveryTime: 'Within 45 mins',
+    totalRatings: 95,
     isTopVendor: false,
-    isFastDelivery: true,
+    hasFastDelivery: true,
     hasHotPrice: false,
-    reviews: [
+    priceRange: {
+      min: 645,
+      max: 675
+    },
+    deliveryTime: 'Within 45 mins',
+    fuelTypes: ['Petrol (PMS)', 'Diesel (AGO)'],
+    contact: {
+      name: 'Jane Smith',
+      email: 'jane@citygas.com',
+      phone: '+2349876543210'
+    },
+    products: [
       {
-        id: '3',
-        rating: 4,
-        comment: 'Reliable service.',
-        userName: 'Mike R.'
+        _id: 'p3',
+        type: 'PMS',
+        name: 'Regular Petrol',
+        description: 'Standard quality petrol',
+        price_per_unit: 645,
+        unit: 'litre',
+        available_qty: 1200,
+        min_order_qty: 5,
+        max_order_qty: 100,
+        status: 'available',
+        specifications: {
+          octane_rating: 87
+        }
+      },
+      {
+        _id: 'p4',
+        type: 'Diesel',
+        name: 'Automotive Diesel',
+        description: 'Standard quality diesel fuel',
+        price_per_unit: 675,
+        unit: 'litre',
+        available_qty: 900,
+        min_order_qty: 5,
+        max_order_qty: 100,
+        status: 'available',
+        specifications: {
+          cetane_number: 48
+        }
       }
     ]
   }

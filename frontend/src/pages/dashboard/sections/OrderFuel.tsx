@@ -17,6 +17,7 @@ export default function OrderFuel() {
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const useCurrentLocation = watch('useCurrentLocation');
+  const [selectedVendor, setSelectedVendor] = useState('');
 
   const onSubmit = async (data: OrderFormData) => {
     setIsLoading(true);
@@ -65,13 +66,14 @@ export default function OrderFuel() {
             Select Vendor
           </label>
           <select
-            {...register('vendorId', { required: true })}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            value={selectedVendor}
+            onChange={(e) => setSelectedVendor(e.target.value)}
+            className="w-full rounded border px-3 py-2"
           >
             <option value="">Select a vendor</option>
             {mockVendors.map((vendor) => (
               <option key={vendor.id} value={vendor.id}>
-                {vendor.name} - {vendor.location.city}
+                {vendor.name} - {vendor.location}
               </option>
             ))}
           </select>

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { User, UserStatus, UserRole } from '../types/user';
+import { Vendor, VendorDisplay, Product } from '../types';
 
 export interface Activity {
   _id: string;
@@ -157,6 +158,70 @@ export const adminService = {
       throw error;
     }
   }
+};
+
+export const vendorService = {
+  getVendors: async (): Promise<VendorDisplay[]> => {
+    try {
+      console.log('Fetching vendors from API...');
+      const response = await api.get('/api/vendor');
+      console.log('Raw API Response:', response);
+      console.log('API Response Data:', response.data);
+      
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('Invalid vendor data received:', response.data);
+        return [];
+      }
+
+      const vendors = response.data.map((vendor: any): VendorDisplay => {
+        console.log('Processing vendor:', vendor);
+        
+        // Calculate price range from products
+        const prices = vendor.products?.map((p: Product) => p.price_per_unit) || [];
+        const minPrice = Math.min(...prices, 650); // Default to 650 if no products
+        const maxPrice = Math.max(...prices, 680); // Default to 680 if no products
+
+        const transformedVendor = {
+          id: vendor._id,
+          name: vendor.business_name,
+          location: `${vendor.address.city}, ${vendor.address.state}`,
+          rating: vendor.average_rating || 0,
+          totalRatings: vendor.total_ratings || 0,
+          isTopVendor: (vendor.average_rating || 0) >= 4.5,
+          hasFastDelivery: true,
+          hasHotPrice: true,
+          priceRange: {
+            min: minPrice,
+            max: maxPrice,
+          },
+          deliveryTime: 'Within 30 mins',
+          fuelTypes: vendor.fuel_types || [],
+          contact: {
+            name: `${vendor.user_id?.firstName || ''} ${vendor.user_id?.lastName || ''}`,
+            email: vendor.user_id?.email || '',
+            phone: vendor.user_id?.phoneNumber || '',
+          },
+          products: vendor.products || []
+        };
+        console.log('Transformed vendor:', transformedVendor);
+        return transformedVendor;
+      });
+
+      console.log('Final transformed vendors:', vendors);
+      return vendors;
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('API Error Details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers,
+        });
+      }
+      throw error;
+    }
+  },
 };
 
 export default api; 

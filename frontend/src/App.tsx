@@ -20,55 +20,28 @@ import type { Vendor } from './types';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import theme from './theme';
-
-// Mock data for vendors
-const mockVendors: Vendor[] = [
-  {
-    id: '1',
-    name: 'Quick Fuel Station',
-    location: {
-      city: 'Lagos',
-      address: 'Victoria Island'
-    },
-    rating: 4.5,
-    fuelTypes: [
-      { type: 'Petrol (PMS)', price: 650 },
-      { type: 'Diesel (AGO)', price: 680 }
-    ],
-    deliveryTime: 'Within 30 mins',
-    isTopVendor: true,
-    isFastDelivery: true,
-    hasHotPrice: true,
-    reviews: [
-      {
-        id: '1',
-        rating: 5,
-        comment: 'Fast delivery and great service!',
-        userName: 'John D.'
-      },
-      {
-        id: '2',
-        rating: 4,
-        comment: 'Good prices and reliable delivery.',
-        userName: 'Sarah M.'
-      }
-    ]
-  }
-];
+import { vendorService } from './services/api';
 
 function HomePage() {
-  const [vendors, setVendors] = useState(mockVendors);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState('');
   const { showToast } = useToast();
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+    const fetchVendors = async () => {
+      try {
+        const data = await vendorService.getVendors();
+        setVendors(data);
+      } catch (error) {
+        console.error('Error fetching vendors:', error);
+        showToast('error', 'Failed to load vendors. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    fetchVendors();
   }, []);
 
   const handleLocationSelect = (location: string) => {
@@ -84,9 +57,18 @@ function HomePage() {
     console.log('Filters changed:', filters);
   };
 
-  const handleReset = () => {
-    setVendors(mockVendors);
-    showToast('info', 'Filters have been reset');
+  const handleReset = async () => {
+    setIsLoading(true);
+    try {
+      const data = await vendorService.getVendors();
+      setVendors(data);
+      showToast('info', 'Filters have been reset');
+    } catch (error) {
+      console.error('Error resetting vendors:', error);
+      showToast('error', 'Failed to reset vendors. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleShowNearby = () => {
@@ -121,6 +103,16 @@ function HomePage() {
                 Array.from({ length: 6 }).map((_, index) => (
                   <VendorCardSkeleton key={index} />
                 ))
+              ) : vendors.length === 0 ? (
+                // Show message when no vendors are found
+                <div className="col-span-full text-center py-12">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    No vendors found
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Try adjusting your filters or search criteria
+                  </p>
+                </div>
               ) : (
                 // Show actual vendor cards
                 vendors.map((vendor) => (

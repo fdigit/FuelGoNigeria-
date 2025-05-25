@@ -1,6 +1,7 @@
 import React from 'react';
 import VendorCard from './VendorCard';
 import VendorCardSkeleton from './VendorCardSkeleton';
+import { Vendor } from '../../types';
 
 interface FuelType {
   type: string;
@@ -17,19 +18,6 @@ interface Review {
   rating: number;
   comment: string;
   userName: string;
-}
-
-interface Vendor {
-  id: string;
-  name: string;
-  location: Location;
-  rating: number;
-  fuelTypes: FuelType[];
-  deliveryTime: string;
-  isTopVendor: boolean;
-  isFastDelivery: boolean;
-  hasHotPrice: boolean;
-  reviews: Review[];
 }
 
 interface VendorGridProps {

@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "create-admin": "ts-node src/scripts/createFirstAdmin.ts",
-    "verify-admin": "ts-node src/scripts/verifyAdmin.ts"
+    "verify-admin": "ts-node src/scripts/verifyAdmin.ts",
+    "seed-vendors": "ts-node src/scripts/seedVendors.ts"
   },
   "keywords": [
     "fuel",
