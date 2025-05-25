@@ -115,7 +115,7 @@ const AdminInvitation: React.FC = () => {
               <Form.Control
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 required
               />
             </Form.Group>
@@ -123,7 +123,7 @@ const AdminInvitation: React.FC = () => {
               <Form.Label>Role</Form.Label>
               <Form.Select
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRole(e.target.value)}
               >
                 <option value="admin">Admin</option>
                 <option value="super_admin">Super Admin</option>

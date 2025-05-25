@@ -5,12 +5,19 @@ export interface IProduct extends Document {
   type: 'PMS' | 'Diesel' | 'Kerosene' | 'Gas';
   name: string;
   description: string;
-  price_per_litre: number;
+  price_per_unit: number;
+  unit: 'litre' | 'kg';
   available_qty: number;
   min_order_qty: number;
   max_order_qty: number;
   status: 'available' | 'out_of_stock' | 'discontinued';
   image_url?: string;
+  specifications?: {
+    octane_rating?: number;  // For PMS
+    cetane_number?: number;  // For Diesel
+    flash_point?: number;    // For Kerosene
+    pressure?: number;       // For Gas
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +32,7 @@ const productSchema = new Schema<IProduct>(
     type: {
       type: String,
       enum: ['PMS', 'Diesel', 'Kerosene', 'Gas'],
-      required: [true, 'Fuel type is required'],
+      required: [true, 'Product type is required'],
     },
     name: {
       type: String,
@@ -36,10 +43,15 @@ const productSchema = new Schema<IProduct>(
       type: String,
       required: [true, 'Product description is required'],
     },
-    price_per_litre: {
+    price_per_unit: {
       type: Number,
-      required: [true, 'Price per litre is required'],
+      required: [true, 'Price per unit is required'],
       min: 0,
+    },
+    unit: {
+      type: String,
+      enum: ['litre', 'kg'],
+      required: [true, 'Unit is required'],
     },
     available_qty: {
       type: Number,
@@ -63,6 +75,12 @@ const productSchema = new Schema<IProduct>(
     image_url: {
       type: String,
     },
+    specifications: {
+      octane_rating: Number,
+      cetane_number: Number,
+      flash_point: Number,
+      pressure: Number,
+    },
   },
   {
     timestamps: true,
@@ -72,11 +90,11 @@ const productSchema = new Schema<IProduct>(
 // Compound index for efficient querying by vendor and type
 productSchema.index({ vendor_id: 1, type: 1 });
 
-// Index for price-based queries
-productSchema.index({ price_per_litre: 1 });
-
-// Pre-save middleware to update status based on quantity
+// Pre-save middleware to set default unit based on product type
 productSchema.pre('save', function(next) {
+  if (this.isModified('type')) {
+    this.unit = this.type === 'Gas' ? 'kg' : 'litre';
+  }
   if (this.available_qty <= 0) {
     this.status = 'out_of_stock';
   } else if (this.status === 'out_of_stock' && this.available_qty > 0) {

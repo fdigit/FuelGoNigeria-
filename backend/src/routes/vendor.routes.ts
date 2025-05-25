@@ -3,6 +3,7 @@ import { auth } from '../middleware/auth';
 import { authorize } from '../middleware/authorize.middleware';
 import multer from 'multer';
 import path from 'path';
+import productRoutes from './vendor/products';
 
 const router = express.Router();
 
@@ -22,6 +23,9 @@ const upload = multer({ storage });
 // Protected routes - require authentication and vendor authorization
 router.use(auth);
 router.use(authorize(['vendor']));
+
+// Mount product routes
+router.use('/products', productRoutes);
 
 // Vendor profile routes
 router.get('/profile', (req, res) => {
