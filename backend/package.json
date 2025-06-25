@@ -8,6 +8,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "test": "jest",
+    "test-auth": "ts-node src/scripts/testAuth.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "create-admin": "ts-node src/scripts/createFirstAdmin.ts",

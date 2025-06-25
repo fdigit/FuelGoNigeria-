@@ -19,28 +19,52 @@ export interface Product {
 }
 
 export interface Vendor {
-  id: string;
-  name: string;
-  location: string;
-  rating: number;
-  totalRatings: number;
-  isTopVendor: boolean;
-  hasFastDelivery: boolean;
-  hasHotPrice: boolean;
-  priceRange: {
-    min: number;
-    max: number;
+  _id: string;
+  business_name: string;
+  image?: string;
+  logo?: string;
+  verification_status: 'verified' | 'pending' | 'rejected';
+  address: {
+    city: string;
+    state: string;
+    country: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
   };
-  deliveryTime: string;
-  fuelTypes: string[];
+  average_rating: number;
+  total_ratings: number;
+  operating_hours: {
+    open: string;
+    close: string;
+  };
+  fuel_types: string[];
   contact: {
-    name: string;
-    email: string;
     phone: string;
+    email: string;
   };
-  products: Product[];
+  services: string[];
+  payment_methods: string[];
+  minimum_order: number;
+  delivery_fee: number;
+  rating: number;
+  reviews: number;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface VendorDisplay extends Vendor {
   // Additional display-specific properties can be added here
+}
+
+export interface Filters {
+  state: string;
+  fuelType: string;
+  priceMin: number;
+  priceMax: number;
+  deliveryTime: string;
+  minRating: string;
 } 

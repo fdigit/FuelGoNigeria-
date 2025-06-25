@@ -4,7 +4,7 @@ import { useToast } from '../../../contexts/ToastContext';
 
 interface CommissionRate {
   id: string;
-  type: 'vendor' | 'driver';
+  type: 'VENDOR' | 'DRIVER';
   tier: 'standard' | 'premium' | 'enterprise';
   rate: number;
   minAmount: number;
@@ -17,7 +17,7 @@ interface CommissionRate {
 
 interface SpecialRate {
   id: string;
-  type: 'vendor' | 'driver';
+  type: 'VENDOR' | 'DRIVER';
   userId: string;
   userName: string;
   rate: number;
@@ -33,7 +33,7 @@ export default function CommissionSettings() {
   const [commissionRates, setCommissionRates] = useState<CommissionRate[]>([
     {
       id: 'CR001',
-      type: 'vendor',
+      type: 'VENDOR',
       tier: 'standard',
       rate: 5,
       minAmount: 0,
@@ -45,7 +45,7 @@ export default function CommissionSettings() {
     },
     {
       id: 'CR002',
-      type: 'vendor',
+      type: 'VENDOR',
       tier: 'premium',
       rate: 4,
       minAmount: 100001,
@@ -57,7 +57,7 @@ export default function CommissionSettings() {
     },
     {
       id: 'CR003',
-      type: 'driver',
+      type: 'DRIVER',
       tier: 'standard',
       rate: 8,
       minAmount: 0,
@@ -72,7 +72,7 @@ export default function CommissionSettings() {
   const [specialRates, setSpecialRates] = useState<SpecialRate[]>([
     {
       id: 'SR001',
-      type: 'vendor',
+      type: 'VENDOR',
       userId: 'V001',
       userName: 'Fuel Station A',
       rate: 3.5,

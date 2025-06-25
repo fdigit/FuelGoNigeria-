@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, RegisterData } from '../types/user';
 import { toast } from 'react-toastify';
+import { API_URL } from '../config';
 
 interface AuthContextType {
   user: (User & { token: string }) | null;
@@ -16,9 +17,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Validate API URL
-const API_URL = process.env.REACT_APP_API_URL;
 if (!API_URL) {
-  console.error('REACT_APP_API_URL is not defined in environment variables');
+  console.error('API_URL is not configured');
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('API URL is not configured');
       }
 
-      const response = await fetch(`${API_URL}/api/auth/validate-token`, {
+      const response = await fetch(`${API_URL}/auth/validate-token`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -93,15 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('API URL is not configured');
       }
 
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      console.log('Attempting login with API_URL:', API_URL);
+      console.log('Login payload:', { email, password });
+
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -109,6 +114,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
+      console.log('Response data:', data);
+
+      // Handle pending account status specially
+      if (response.status === 403 && data.status === 'pending') {
+        const error = new Error(data.message || 'Account pending approval');
+        (error as any).status = 'pending';
+        throw error;
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
@@ -123,6 +136,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       if (error.message === 'Server returned non-JSON response') {
         toast.error('Unable to connect to the server. Please try again later.');
+      } else if (error.status === 'pending') {
+        // Don't show error toast for pending accounts - let the component handle it
+        throw error;
       } else {
         toast.error(error.message || 'Login failed. Please check your credentials.');
       }
@@ -136,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('API URL is not configured');
       }
 
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -176,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user');
     // Optionally call logout endpoint to invalidate token on server
     if (API_URL && user?.token) {
-      fetch(`${API_URL}/api/auth/logout`, {
+      fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`,

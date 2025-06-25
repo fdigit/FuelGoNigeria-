@@ -17,7 +17,7 @@ export default function OrderFuel() {
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const useCurrentLocation = watch('useCurrentLocation');
-  const [selectedVendor, setSelectedVendor] = useState('');
+  const [selectedVendorId, setSelectedVendorId] = useState('');
 
   const onSubmit = async (data: OrderFormData) => {
     setIsLoading(true);
@@ -55,6 +55,10 @@ export default function OrderFuel() {
     }
   };
 
+  const handleVendorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedVendorId(e.target.value);
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Order Fuel</h2>
@@ -66,14 +70,14 @@ export default function OrderFuel() {
             Select Vendor
           </label>
           <select
-            value={selectedVendor}
-            onChange={(e) => setSelectedVendor(e.target.value)}
-            className="w-full rounded border px-3 py-2"
+            value={selectedVendorId}
+            onChange={handleVendorChange}
+            className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           >
             <option value="">Select a vendor</option>
             {mockVendors.map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>
-                {vendor.name} - {vendor.location}
+              <option key={vendor._id} value={vendor._id}>
+                {vendor.business_name} - {vendor.address.state}, {vendor.address.city}
               </option>
             ))}
           </select>

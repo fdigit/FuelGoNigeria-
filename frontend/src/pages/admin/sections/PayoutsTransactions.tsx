@@ -10,7 +10,7 @@ interface Transaction {
   recipient: {
     id: string;
     name: string;
-    type: 'vendor' | 'driver';
+    type: 'VENDOR' | 'DRIVER';
     accountDetails: {
       bankName: string;
       accountNumber: string;
@@ -63,7 +63,7 @@ export default function PayoutsTransactions() {
           recipient: {
             id: 'V001',
             name: 'Fuel Station A',
-            type: 'vendor',
+            type: 'VENDOR',
             accountDetails: {
               bankName: 'First Bank',
               accountNumber: '0123456789',
@@ -87,7 +87,7 @@ export default function PayoutsTransactions() {
       recipient: {
         id: 'V001',
         name: 'Fuel Station A',
-        type: 'vendor',
+        type: 'VENDOR',
         accountDetails: {
           bankName: 'First Bank',
           accountNumber: '0123456789',
@@ -106,7 +106,7 @@ export default function PayoutsTransactions() {
       recipient: {
         id: 'D001',
         name: 'John Driver',
-        type: 'driver',
+        type: 'DRIVER',
         accountDetails: {
           bankName: 'Access Bank',
           accountNumber: '9876543210',

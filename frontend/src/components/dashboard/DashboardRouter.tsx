@@ -8,12 +8,15 @@ import VendorDashboard from '../../pages/dashboard/VendorDashboard';
 export default function DashboardRouter() {
   const { user } = useAuth();
 
-  switch (user?.role) {
-    case 'admin':
+  // Use role directly since we now use uppercase values consistently
+  const userRole = user?.role;
+
+  switch (userRole) {
+    case 'ADMIN':
       return <AdminDashboard />;
-    case 'driver':
+    case 'DRIVER':
       return <DriverDashboard />;
-    case 'vendor':
+    case 'VENDOR':
       return <VendorDashboard />;
     default:
       return <CustomerDashboard />;

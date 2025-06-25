@@ -86,9 +86,9 @@ export default function ProductManagement() {
       // Format token with Bearer prefix if needed
       const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       console.log('Using auth token:', authToken.substring(0, 15) + '...');
-      console.log('Making API request to:', `${API_URL}/api/vendor/products`);
+      console.log('Making API request to:', `${API_URL}/vendor/products`);
 
-      const response = await fetch(`${API_URL}/api/vendor/products`, {
+      const response = await fetch(`${API_URL}/vendor/products`, {
         headers: {
           'Authorization': authToken,
           'Content-Type': 'application/json'
@@ -155,13 +155,99 @@ export default function ProductManagement() {
       ...prev,
       specifications: {
         ...prev.specifications,
-        [name]: Number(value)
+        [name]: value === '' ? null : Number(value)
       }
     }));
   };
 
+  // Validation functions for specifications
+  const validateSpecifications = (type: string, specifications: any) => {
+    const errors: string[] = [];
+    
+    if (!specifications) return errors;
+
+    switch (type) {
+      case 'PMS':
+        if (specifications.octane_rating) {
+          const rating = parseFloat(specifications.octane_rating);
+          if (isNaN(rating) || rating < 80 || rating > 100) {
+            errors.push('Octane rating must be between 80 and 100 RON');
+          }
+        }
+        break;
+      case 'Diesel':
+        if (specifications.cetane_number) {
+          const cetane = parseFloat(specifications.cetane_number);
+          if (isNaN(cetane) || cetane < 40 || cetane > 60) {
+            errors.push('Cetane number must be between 40 and 60');
+          }
+        }
+        break;
+      case 'Kerosene':
+        if (specifications.flash_point) {
+          const flashPoint = parseFloat(specifications.flash_point);
+          if (isNaN(flashPoint) || flashPoint < 35 || flashPoint > 100) {
+            errors.push('Flash point must be between 35 and 100°C');
+          }
+        }
+        break;
+      case 'Gas':
+        if (specifications.pressure) {
+          const pressure = parseFloat(specifications.pressure);
+          if (isNaN(pressure) || pressure < 0 || pressure > 5000) {
+            errors.push('Pressure must be between 0 and 5000 PSI');
+          }
+        }
+        break;
+    }
+    
+    return errors;
+  };
+
+  const validateFormData = (data: ProductFormData) => {
+    const errors: string[] = [];
+    
+    if (!data.name.trim()) {
+      errors.push('Product name is required');
+    }
+    
+    if (!data.description.trim()) {
+      errors.push('Product description is required');
+    }
+    
+    if (data.price_per_unit <= 0) {
+      errors.push('Price must be greater than 0');
+    }
+    
+    if (data.min_order_qty <= 0) {
+      errors.push('Minimum order quantity must be greater than 0');
+    }
+    
+    if (data.max_order_qty <= data.min_order_qty) {
+      errors.push('Maximum order quantity must be greater than minimum order quantity');
+    }
+    
+    if (data.available_qty < 0) {
+      errors.push('Available quantity cannot be negative');
+    }
+    
+    // Validate specifications
+    const specErrors = validateSpecifications(data.type, data.specifications);
+    errors.push(...specErrors);
+    
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const validationErrors = validateFormData(formData);
+    if (validationErrors.length > 0) {
+      showToast('error', `Validation errors: ${validationErrors.join(', ')}`);
+      return;
+    }
+    
     try {
       const storedUser = localStorage.getItem('user');
       
@@ -188,7 +274,7 @@ export default function ProductManagement() {
 
       if (editingProduct) {
         console.log('Updating product:', editingProduct._id);
-        const response = await fetch(`${API_URL}/api/vendor/products/${editingProduct._id}`, {
+        const response = await fetch(`${API_URL}/vendor/products/${editingProduct._id}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(formData),
@@ -215,7 +301,7 @@ export default function ProductManagement() {
         showToast('success', 'Product updated successfully');
       } else {
         console.log('Creating new product');
-        const response = await fetch(`${API_URL}/api/vendor/products`, {
+        const response = await fetch(`${API_URL}/vendor/products`, {
           method: 'POST',
           headers,
           body: JSON.stringify(formData),
@@ -295,7 +381,7 @@ export default function ProductManagement() {
           return;
         }
 
-        const response = await fetch(`${API_URL}/api/vendor/products/${id}`, {
+        const response = await fetch(`${API_URL}/vendor/products/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -330,15 +416,34 @@ export default function ProductManagement() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Octane Rating
+                Octane Rating (RON)
+                <span className="text-xs text-gray-500 ml-1">(Research Octane Number)</span>
               </label>
-              <input
-                type="number"
-                name="octane_rating"
-                value={formData.specifications?.octane_rating || ''}
-                onChange={handleSpecificationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+              <div className="mt-1 relative">
+                <input
+                  type="number"
+                  name="octane_rating"
+                  value={formData.specifications?.octane_rating || ''}
+                  onChange={handleSpecificationChange}
+                  min="80"
+                  max="100"
+                  step="0.1"
+                  placeholder="e.g., 87, 91, 95"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-20"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span className="text-gray-500 text-sm">RON</span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Common octane ratings:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>87 RON:</strong> Regular unleaded</li>
+                  <li><strong>91 RON:</strong> Premium unleaded</li>
+                  <li><strong>95 RON:</strong> Super premium</li>
+                  <li><strong>98 RON:</strong> Ultra premium</li>
+                </ul>
+              </div>
             </div>
           </div>
         );
@@ -348,14 +453,32 @@ export default function ProductManagement() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Cetane Number
+                <span className="text-xs text-gray-500 ml-1">(Ignition quality)</span>
               </label>
-              <input
-                type="number"
-                name="cetane_number"
-                value={formData.specifications?.cetane_number || ''}
-                onChange={handleSpecificationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+              <div className="mt-1 relative">
+                <input
+                  type="number"
+                  name="cetane_number"
+                  value={formData.specifications?.cetane_number || ''}
+                  onChange={handleSpecificationChange}
+                  min="40"
+                  max="60"
+                  step="0.1"
+                  placeholder="e.g., 45, 50, 55"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-16"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span className="text-gray-500 text-sm">CN</span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Typical cetane numbers:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>40-45:</strong> Standard diesel</li>
+                  <li><strong>45-50:</strong> Premium diesel</li>
+                  <li><strong>50+:</strong> Ultra premium diesel</li>
+                </ul>
+              </div>
             </div>
           </div>
         );
@@ -365,14 +488,32 @@ export default function ProductManagement() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Flash Point (°C)
+                <span className="text-xs text-gray-500 ml-1">(Temperature at which vapors ignite)</span>
               </label>
-              <input
-                type="number"
-                name="flash_point"
-                value={formData.specifications?.flash_point || ''}
-                onChange={handleSpecificationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+              <div className="mt-1 relative">
+                <input
+                  type="number"
+                  name="flash_point"
+                  value={formData.specifications?.flash_point || ''}
+                  onChange={handleSpecificationChange}
+                  min="35"
+                  max="100"
+                  step="0.1"
+                  placeholder="e.g., 38, 45, 60"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-12"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span className="text-gray-500 text-sm">°C</span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Typical flash points:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>35-45°C:</strong> Standard kerosene</li>
+                  <li><strong>45-60°C:</strong> Aviation kerosene</li>
+                  <li><strong>60+°C:</strong> High flash point kerosene</li>
+                </ul>
+              </div>
             </div>
           </div>
         );
@@ -382,14 +523,32 @@ export default function ProductManagement() {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Pressure (PSI)
+                <span className="text-xs text-gray-500 ml-1">(Storage pressure)</span>
               </label>
-              <input
-                type="number"
-                name="pressure"
-                value={formData.specifications?.pressure || ''}
-                onChange={handleSpecificationChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+              <div className="mt-1 relative">
+                <input
+                  type="number"
+                  name="pressure"
+                  value={formData.specifications?.pressure || ''}
+                  onChange={handleSpecificationChange}
+                  min="0"
+                  max="5000"
+                  step="1"
+                  placeholder="e.g., 100, 500, 1000"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white pr-12"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <span className="text-gray-500 text-sm">PSI</span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Common pressure ranges:</p>
+                <ul className="list-disc list-inside mt-1 space-y-1">
+                  <li><strong>100-500 PSI:</strong> Low pressure gas</li>
+                  <li><strong>500-2000 PSI:</strong> Medium pressure gas</li>
+                  <li><strong>2000+ PSI:</strong> High pressure gas</li>
+                </ul>
+              </div>
             </div>
           </div>
         );
@@ -626,6 +785,30 @@ export default function ProductManagement() {
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {product.description}
                         </div>
+                        {product.specifications && (
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                            {product.type === 'PMS' && product.specifications.octane_rating && (
+                              <span className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded mr-1">
+                                {product.specifications.octane_rating} RON
+                              </span>
+                            )}
+                            {product.type === 'Diesel' && product.specifications.cetane_number && (
+                              <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-1">
+                                {product.specifications.cetane_number} CN
+                              </span>
+                            )}
+                            {product.type === 'Kerosene' && product.specifications.flash_point && (
+                              <span className="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-1">
+                                {product.specifications.flash_point}°C FP
+                              </span>
+                            )}
+                            {product.type === 'Gas' && product.specifications.pressure && (
+                              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-1 rounded mr-1">
+                                {product.specifications.pressure} PSI
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">

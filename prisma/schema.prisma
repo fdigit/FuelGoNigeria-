@@ -1,0 +1,367 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName   String
+  lastName    String
+  email       String   @unique
+  password    String
+  phoneNumber String   @unique
+  role        UserRole @default(CUSTOMER)
+  status      UserStatus @default(PENDING)
+  
+  // Driver specific fields
+  licenseNumber String?
+  vehicleType   String?
+  vehiclePlate  String?
+  
+  // Vendor specific fields
+  businessName    String?
+  businessAddress String?
+  businessPhone   String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  vendor   Vendor?
+  orders   Order[]
+  reviews  Review[]
+  payments Payment[]
+  driver   Driver?
+  
+  @@map("users")
+}
+
+model Vendor {
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String             @unique @db.ObjectId
+  businessName       String
+  image              String?
+  logo               String?
+  verificationStatus VerificationStatus @default(PENDING)
+  
+  // Address
+  address Address
+  
+  // Ratings
+  averageRating Float  @default(0)
+  totalRatings  Int    @default(0)
+  
+  // Operating hours
+  operatingHours OperatingHours
+  
+  // Fuel and services
+  fuelTypes      String[]
+  services       String[]
+  paymentMethods String[]
+  
+  // Business details
+  minimumOrder Float @default(0)
+  deliveryFee  Float @default(0)
+  rating       Float @default(0)
+  totalReviews Int   @default(0)
+  isVerified   Boolean @default(false)
+  isActive     Boolean @default(true)
+  
+  // Bank information
+  bankInfo BankInfo?
+  
+  // Documents
+  documents Documents?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user     User     @relation(fields: [userId], references: [id])
+  products Product[]
+  orders   Order[]
+  reviews  Review[] @relation("VendorReviews")
+  drivers  Driver[]
+  
+  @@map("vendors")
+}
+
+model Product {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  vendorId      String        @db.ObjectId
+  type          FuelType
+  name          String
+  description   String
+  pricePerUnit  Float
+  unit          Unit
+  availableQty  Float
+  minOrderQty   Float
+  maxOrderQty   Float
+  status        ProductStatus @default(AVAILABLE)
+  imageUrl      String?
+  
+  // Specifications
+  specifications Specifications?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  vendor     Vendor      @relation(fields: [vendorId], references: [id])
+  orderItems OrderItem[]
+  
+  @@map("products")
+}
+
+model Order {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String      @db.ObjectId
+  vendorId    String      @db.ObjectId
+  driverId    String?     @db.ObjectId
+  status      OrderStatus @default(PENDING)
+  totalAmount Float
+  deliveryFee Float @default(0)
+  address     Address
+  
+  // Payment
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod String?
+  
+  // Delivery
+  deliveryAddress Address?
+  deliveryTime    DateTime?
+  estimatedDelivery DateTime?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user        User        @relation(fields: [userId], references: [id])
+  vendor      Vendor      @relation(fields: [vendorId], references: [id])
+  driver      Driver?     @relation(fields: [driverId], references: [id])
+  orderItems  OrderItem[]
+  payments    Payment[]
+  
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String @db.ObjectId
+  productId String @db.ObjectId
+  quantity  Float
+  price     Float
+  
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  
+  @@map("order_items")
+}
+
+model Payment {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  orderId       String        @db.ObjectId
+  userId        String        @db.ObjectId
+  amount        Float
+  method        String
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  
+  @@map("payments")
+}
+
+model Review {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String @db.ObjectId
+  vendorId  String @db.ObjectId
+  rating    Int
+  comment   String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  vendor Vendor @relation("VendorReviews", fields: [vendorId], references: [id])
+  
+  @@map("reviews")
+}
+
+model Driver {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String      @unique @db.ObjectId
+  vendorId    String      @db.ObjectId
+  
+  // Personal Information
+  firstName   String
+  lastName    String
+  email       String      @unique
+  phoneNumber String      @unique
+  
+  // License Information
+  licenseNumber    String
+  licenseExpiry    DateTime
+  licenseType      String
+  
+  // Vehicle Information
+  vehicleType      String
+  vehiclePlate     String
+  vehicleModel     String?
+  vehicleColor     String?
+  vehicleCapacity  Float? // in liters
+  
+  // Status and Availability
+  status          DriverStatus @default(AVAILABLE)
+  isActive        Boolean      @default(true)
+  currentLocation Coordinates?
+  
+  // Performance Metrics
+  rating          Float        @default(0)
+  totalDeliveries Int          @default(0)
+  totalEarnings   Float        @default(0)
+  
+  // Emergency Contact
+  emergencyContact EmergencyContact?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user     User     @relation(fields: [userId], references: [id])
+  vendor   Vendor   @relation(fields: [vendorId], references: [id])
+  orders   Order[]
+  
+  @@map("drivers")
+}
+
+// Enums
+enum UserRole {
+  CUSTOMER
+  DRIVER
+  VENDOR
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum FuelType {
+  PMS
+  DIESEL
+  KEROSENE
+  GAS
+}
+
+enum Unit {
+  LITRE
+  KG
+}
+
+enum ProductStatus {
+  AVAILABLE
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum DriverStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+  SUSPENDED
+}
+
+// Complex types
+type Address {
+  street     String?
+  city       String
+  state      String
+  country    String @default("Nigeria")
+  coordinates Coordinates?
+}
+
+type Coordinates {
+  lat Float
+  lng Float
+}
+
+type OperatingHours {
+  open  String
+  close String
+  days  String[] @default(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+}
+
+type BankInfo {
+  bankName      String
+  accountNumber String
+  accountName   String
+}
+
+type Documents {
+  businessRegistration String?
+  taxId               String?
+  fuelLicense         String?
+}
+
+type Specifications {
+  octaneRating Float?
+  cetaneNumber Float?
+  flashPoint   Float?
+  pressure     Float?
+}
+
+type EmergencyContact {
+  name        String
+  phone       String
+  relationship String
+}

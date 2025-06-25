@@ -1,5 +1,5 @@
-export type UserRole = 'customer' | 'driver' | 'vendor' | 'admin' | 'super_admin';
-export type UserStatus = 'active' | 'pending' | 'suspended' | 'rejected';
+export type UserRole = 'CUSTOMER' | 'DRIVER' | 'VENDOR' | 'ADMIN' | 'SUPER_ADMIN';
+export type UserStatus = 'ACTIVE' | 'PENDING' | 'SUSPENDED' | 'REJECTED';
 
 export interface User {
   _id: string;
@@ -30,7 +30,7 @@ export interface UserResponse {
 }
 
 export interface PendingUser extends User {
-  status: 'pending';
+  status: 'PENDING';
 }
 
 export interface RegisterData {

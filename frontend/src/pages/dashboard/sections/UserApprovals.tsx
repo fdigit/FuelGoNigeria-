@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
-import { User } from '../../../types/user';
+import { User, PendingUser } from '../../../types/user';
 
-interface PendingUser extends Omit<User, '_id'> {
+// Extend the imported PendingUser type to include the additional fields needed
+interface ExtendedPendingUser extends PendingUser {
   _id: string;
   registrationDate: Date;
   additionalInfo?: {
@@ -18,9 +19,9 @@ interface PendingUser extends Omit<User, '_id'> {
 
 export default function UserApprovals() {
   const { showToast } = useToast();
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<ExtendedPendingUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<ExtendedPendingUser | null>(null);
 
   useEffect(() => {
     fetchPendingUsers();
@@ -74,7 +75,7 @@ export default function UserApprovals() {
     }
   };
 
-  const renderUserDetails = (user: PendingUser) => {
+  const renderUserDetails = (user: ExtendedPendingUser) => {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -102,7 +103,7 @@ export default function UserApprovals() {
           </div>
         </div>
 
-        {user.role === 'driver' && user.additionalInfo && (
+        {user.role === 'DRIVER' && user.additionalInfo && (
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Driver Information</h3>
             <div className="mt-2 grid grid-cols-2 gap-4">
@@ -122,7 +123,7 @@ export default function UserApprovals() {
           </div>
         )}
 
-        {user.role === 'vendor' && user.additionalInfo && (
+        {user.role === 'VENDOR' && user.additionalInfo && (
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Business Information</h3>
             <div className="mt-2 grid grid-cols-2 gap-4">

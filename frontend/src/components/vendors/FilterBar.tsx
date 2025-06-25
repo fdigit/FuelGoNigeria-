@@ -3,19 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FunnelIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Listbox } from '@headlessui/react';
 import { ChevronUpDownIcon, CheckIcon } from '@heroicons/react/24/solid';
+import { Filters } from '../../types/vendor';
 
 interface FilterBarProps {
   onFilterChange: (filters: Filters) => void;
   onReset: () => void;
   onShowNearby: () => void;
-}
-
-interface Filters {
-  states: string[];
-  fuelTypes: string[];
-  priceRange: [number, number];
-  deliveryTime: string[];
-  rating: number;
 }
 
 const states = [
@@ -46,255 +39,134 @@ const deliveryTimes = [
 export default function FilterBar({ onFilterChange, onReset, onShowNearby }: FilterBarProps) {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({
-    states: [],
-    fuelTypes: [],
-    priceRange: [0, 1000],
-    deliveryTime: [],
-    rating: 0,
+    state: '',
+    fuelType: '',
+    priceMin: 0,
+    priceMax: 1000,
+    deliveryTime: '',
+    minRating: '',
   });
 
-  const handleFilterChange = (key: keyof Filters, value: any) => {
-    const newFilters = { ...filters, [key]: value };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const newFilters = {
+      ...filters,
+      [e.target.name]: e.target.value,
+    };
     setFilters(newFilters);
     onFilterChange(newFilters);
   };
 
   const handleReset = () => {
     setFilters({
-      states: [],
-      fuelTypes: [],
-      priceRange: [0, 1000],
-      deliveryTime: [],
-      rating: 0,
+      state: '',
+      fuelType: '',
+      priceMin: 0,
+      priceMax: 1000,
+      deliveryTime: '',
+      minRating: '',
     });
     onReset();
   };
 
   const FilterSection = () => (
     <div className="space-y-4">
-      {/* States Multi-select */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          States
-        </label>
-        <Listbox
-          value={filters.states}
-          onChange={(value) => handleFilterChange('states', value)}
-          multiple
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">States</label>
+        <select
+          name="state"
+          className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          value={filters.state}
+          onChange={handleChange}
         >
-          <div className="relative mt-1">
-            <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white dark:bg-gray-800 py-2 pl-3 pr-10 text-left border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <span className="block truncate">
-                {filters.states.length > 0
-                  ? `${filters.states.length} selected`
-                  : 'Select states'}
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronUpDownIcon className="h-5 w-5 text-gray-400" />
-              </span>
-            </Listbox.Button>
-            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-              {states.map((state) => (
-                <Listbox.Option
-                  key={state}
-                  value={state}
-                  className={({ active }) =>
-                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                      active
-                        ? 'bg-primary-100 text-primary-900'
-                        : 'text-gray-900 dark:text-gray-100'
-                    }`
-                  }
-                >
-                  {({ selected }) => (
-                    <>
-                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                        {state}
-                      </span>
-                      {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
-                          <CheckIcon className="h-5 w-5" />
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Listbox.Option>
-              ))}
-            </Listbox.Options>
-          </div>
-        </Listbox>
+          <option value="">Select states</option>
+          <option value="lagos">Lagos</option>
+          <option value="abuja">Abuja</option>
+          <option value="port-harcourt">Port Harcourt</option>
+        </select>
       </div>
 
-      {/* Fuel Types Multi-select */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Fuel Types
-        </label>
-        <Listbox
-          value={filters.fuelTypes}
-          onChange={(value) => handleFilterChange('fuelTypes', value)}
-          multiple
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Fuel Types</label>
+        <select
+          name="fuelType"
+          className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          value={filters.fuelType}
+          onChange={handleChange}
         >
-          <div className="relative mt-1">
-            <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white dark:bg-gray-800 py-2 pl-3 pr-10 text-left border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <span className="block truncate">
-                {filters.fuelTypes.length > 0
-                  ? `${filters.fuelTypes.length} selected`
-                  : 'Select fuel types'}
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronUpDownIcon className="h-5 w-5 text-gray-400" />
-              </span>
-            </Listbox.Button>
-            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-              {fuelTypes.map((type) => (
-                <Listbox.Option
-                  key={type}
-                  value={type}
-                  className={({ active }) =>
-                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                      active
-                        ? 'bg-primary-100 text-primary-900'
-                        : 'text-gray-900 dark:text-gray-100'
-                    }`
-                  }
-                >
-                  {({ selected }) => (
-                    <>
-                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                        {type}
-                      </span>
-                      {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
-                          <CheckIcon className="h-5 w-5" />
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Listbox.Option>
-              ))}
-            </Listbox.Options>
-          </div>
-        </Listbox>
+          <option value="">Select fuel types</option>
+          <option value="petrol">Petrol</option>
+          <option value="diesel">Diesel</option>
+          <option value="cng">CNG</option>
+        </select>
       </div>
 
-      {/* Price Range */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Price Range (₦/L)
-        </label>
-        <div className="mt-1 flex items-center space-x-4">
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Price Range (₦/L)</label>
+        <div className="flex gap-2 items-center">
           <input
             type="number"
-            value={filters.priceRange[0]}
-            onChange={(e) =>
-              handleFilterChange('priceRange', [
-                Number(e.target.value),
-                filters.priceRange[1],
-              ])
-            }
-            className="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-gray-800"
-            placeholder="Min"
+            name="priceMin"
+            min={0}
+            max={filters.priceMax}
+            value={filters.priceMin}
+            onChange={handleChange}
+            className="w-20 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
-          <span className="text-gray-500">to</span>
+          <span className="text-gray-500 dark:text-gray-400">to</span>
           <input
             type="number"
-            value={filters.priceRange[1]}
-            onChange={(e) =>
-              handleFilterChange('priceRange', [
-                filters.priceRange[0],
-                Number(e.target.value),
-              ])
-            }
-            className="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-gray-800"
-            placeholder="Max"
+            name="priceMax"
+            min={filters.priceMin}
+            max={1000}
+            value={filters.priceMax}
+            onChange={handleChange}
+            className="w-20 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
         </div>
       </div>
 
-      {/* Delivery Time */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Delivery Time
-        </label>
-        <Listbox
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Delivery Time</label>
+        <select
+          name="deliveryTime"
+          className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           value={filters.deliveryTime}
-          onChange={(value) => handleFilterChange('deliveryTime', value)}
-          multiple
+          onChange={handleChange}
         >
-          <div className="relative mt-1">
-            <Listbox.Button className="relative w-full cursor-default rounded-lg bg-white dark:bg-gray-800 py-2 pl-3 pr-10 text-left border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <span className="block truncate">
-                {filters.deliveryTime.length > 0
-                  ? `${filters.deliveryTime.length} selected`
-                  : 'Select delivery times'}
-              </span>
-              <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                <ChevronUpDownIcon className="h-5 w-5 text-gray-400" />
-              </span>
-            </Listbox.Button>
-            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-              {deliveryTimes.map((time) => (
-                <Listbox.Option
-                  key={time}
-                  value={time}
-                  className={({ active }) =>
-                    `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                      active
-                        ? 'bg-primary-100 text-primary-900'
-                        : 'text-gray-900 dark:text-gray-100'
-                    }`
-                  }
-                >
-                  {({ selected }) => (
-                    <>
-                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                        {time}
-                      </span>
-                      {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-primary-600">
-                          <CheckIcon className="h-5 w-5" />
-                        </span>
-                      )}
-                    </>
-                  )}
-                </Listbox.Option>
-              ))}
-            </Listbox.Options>
-          </div>
-        </Listbox>
+          <option value="">Select delivery times</option>
+          <option value="30">Within 30 minutes</option>
+          <option value="60">Within 1 hour</option>
+          <option value="120">Within 2 hours</option>
+        </select>
       </div>
 
-      {/* Rating */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Minimum Rating
-        </label>
-        <div className="mt-1">
-          <select
-            value={filters.rating}
-            onChange={(e) => handleFilterChange('rating', Number(e.target.value))}
-            className="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm dark:bg-gray-800"
-          >
-            <option value={0}>Any Rating</option>
-            <option value={3}>3+ Stars</option>
-            <option value={4}>4+ Stars</option>
-            <option value={4.5}>4.5+ Stars</option>
-          </select>
-        </div>
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">Minimum Rating</label>
+        <select
+          name="minRating"
+          className="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          value={filters.minRating}
+          onChange={handleChange}
+        >
+          <option value="">Any Rating</option>
+          <option value="1">1+</option>
+          <option value="2">2+</option>
+          <option value="3">3+</option>
+          <option value="4">4+</option>
+          <option value="5">5</option>
+        </select>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col space-y-2">
+      <div className="space-y-2">
         <button
           onClick={onShowNearby}
-          className="w-full btn-secondary"
+          className="w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
         >
           Show Vendors Near Me
         </button>
         <button
           onClick={handleReset}
-          className="w-full btn-outline"
+          className="w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200"
         >
           Reset Filters
         </button>

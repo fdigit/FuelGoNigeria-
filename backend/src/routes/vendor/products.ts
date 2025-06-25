@@ -1,101 +1,144 @@
-import express from 'express';
-import { auth } from '../../middleware/auth';
-import Product from '../../models/Product';
-import { validateProduct } from '../../validators/product';
+import { Router, Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
 
-const router = express.Router();
+const prisma = new PrismaClient();
+const router = Router();
 
-// Get all products for a vendor
-router.get('/', auth, async (req, res) => {
+// TODO: Replace with real authentication middleware
+const fakeAuth = (req: Request, res: Response, next: any) => {
+  // Simulate vendor userId from token
+  req.user = { userId: req.headers['x-user-id'] || 'FAKE_VENDOR_ID' };
+  next();
+};
+
+// GET /api/vendor/products
+router.get('/', fakeAuth, async (req: Request, res: Response) => {
   try {
-    const products = await Product.find({ vendor_id: req.user._id });
+    const userId = req.user.userId;
+    const vendor = await prisma.vendor.findUnique({
+      where: { userId },
+      include: { products: true }
+    });
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+    const products = vendor.products.map(product => ({
+      _id: product.id,
+      name: product.name,
+      type: product.type,
+      description: product.description,
+      price_per_unit: product.pricePerUnit,
+      unit: product.unit.toLowerCase(),
+      available_qty: product.availableQty,
+      min_order_qty: product.minOrderQty,
+      max_order_qty: product.maxOrderQty,
+      status: product.status.toLowerCase().replace('_', ''),
+      image_url: product.imageUrl,
+      specifications: product.specifications
+    }));
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching products' });
   }
 });
 
-// Add a new product
-router.post('/', auth, async (req, res) => {
+// POST /api/vendor/products
+router.post('/', fakeAuth, async (req: Request, res: Response) => {
   try {
-    const { error } = validateProduct(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
-    const product = new Product({
-      ...req.body,
-      vendor_id: req.user._id,
-      unit: req.body.type === 'Gas' ? 'kg' : 'litre'
+    const userId = req.user.userId;
+    const vendor = await prisma.vendor.findUnique({ where: { userId } });
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+    const { name, type, description, price_per_unit, min_order_qty, max_order_qty, available_qty, specifications } = req.body;
+    const unit = type.toUpperCase() === 'GAS' ? 'KG' : 'LITRE';
+    const product = await prisma.product.create({
+      data: {
+        vendorId: vendor.id,
+        type: type.toUpperCase(),
+        name,
+        description,
+        pricePerUnit: parseFloat(price_per_unit),
+        unit,
+        availableQty: parseFloat(available_qty),
+        minOrderQty: parseFloat(min_order_qty),
+        maxOrderQty: parseFloat(max_order_qty),
+        status: 'AVAILABLE',
+        specifications: specifications || {}
+      }
     });
-
-    await product.save();
-    res.status(201).json(product);
+    res.status(201).json({
+      _id: product.id,
+      name: product.name,
+      type: product.type,
+      description: product.description,
+      price_per_unit: product.pricePerUnit,
+      unit: product.unit.toLowerCase(),
+      available_qty: product.availableQty,
+      min_order_qty: product.minOrderQty,
+      max_order_qty: product.maxOrderQty,
+      status: product.status.toLowerCase().replace('_', ''),
+      image_url: product.imageUrl,
+      specifications: product.specifications
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error creating product' });
   }
 });
 
-// Update a product
-router.put('/:id', auth, async (req, res) => {
+// PUT /api/vendor/products/:productId
+router.put('/:productId', fakeAuth, async (req: Request, res: Response) => {
   try {
-    const { error } = validateProduct(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
-    const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, vendor_id: req.user._id },
-      {
-        ...req.body,
-        unit: req.body.type === 'Gas' ? 'kg' : 'litre'
-      },
-      { new: true }
-    );
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    res.json(product);
+    const userId = req.user.userId;
+    const { productId } = req.params;
+    const vendor = await prisma.vendor.findUnique({ where: { userId } });
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+    const existingProduct = await prisma.product.findFirst({ where: { id: productId, vendorId: vendor.id } });
+    if (!existingProduct) return res.status(404).json({ message: 'Product not found' });
+    const { name, type, description, price_per_unit, min_order_qty, max_order_qty, available_qty, specifications } = req.body;
+    const unit = type.toUpperCase() === 'GAS' ? 'KG' : 'LITRE';
+    const product = await prisma.product.update({
+      where: { id: productId },
+      data: {
+        type: type.toUpperCase(),
+        name,
+        description,
+        pricePerUnit: parseFloat(price_per_unit),
+        unit,
+        availableQty: parseFloat(available_qty),
+        minOrderQty: parseFloat(min_order_qty),
+        maxOrderQty: parseFloat(max_order_qty),
+        specifications: specifications || {}
+      }
+    });
+    res.json({
+      _id: product.id,
+      name: product.name,
+      type: product.type,
+      description: product.description,
+      price_per_unit: product.pricePerUnit,
+      unit: product.unit.toLowerCase(),
+      available_qty: product.availableQty,
+      min_order_qty: product.minOrderQty,
+      max_order_qty: product.maxOrderQty,
+      status: product.status.toLowerCase().replace('_', ''),
+      image_url: product.imageUrl,
+      specifications: product.specifications
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error updating product' });
   }
 });
 
-// Delete a product
-router.delete('/:id', auth, async (req, res) => {
+// DELETE /api/vendor/products/:productId
+router.delete('/:productId', fakeAuth, async (req: Request, res: Response) => {
   try {
-    const product = await Product.findOneAndDelete({
-      _id: req.params.id,
-      vendor_id: req.user._id
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
+    const userId = req.user.userId;
+    const { productId } = req.params;
+    const vendor = await prisma.vendor.findUnique({ where: { userId } });
+    if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+    const existingProduct = await prisma.product.findFirst({ where: { id: productId, vendorId: vendor.id } });
+    if (!existingProduct) return res.status(404).json({ message: 'Product not found' });
+    await prisma.product.delete({ where: { id: productId } });
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting product' });
-  }
-});
-
-// Get product details
-router.get('/:id', auth, async (req, res) => {
-  try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      vendor_id: req.user._id
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    res.json(product);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching product details' });
   }
 });
 

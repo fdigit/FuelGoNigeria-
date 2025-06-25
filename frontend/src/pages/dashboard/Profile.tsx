@@ -131,7 +131,7 @@ export default function Profile() {
             <div className="mt-8">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Additional Information</h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                {user.role === 'driver' && (
+                {user.role === 'DRIVER' && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -160,7 +160,7 @@ export default function Profile() {
                   </>
                 )}
 
-                {user.role === 'vendor' && (
+                {user.role === 'VENDOR' && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

@@ -92,6 +92,19 @@ export const emailTemplates = {
       </div>
     `,
   }),
+
+  statusUpdate: (name: string, status: string, reason?: string) => ({
+    subject: 'Your FuelGo Nigeria Account Status Update',
+    text: `Dear ${name},\n\nYour account status has been updated to: ${status}${reason ? `\n\nReason: ${reason}` : ''}\n\nBest regards,\nFuelGo Nigeria Team`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Account Status Update</h2>
+        <p>Dear ${name},</p>
+        <p>Your account status has been updated to: <strong>${status}</strong>${reason ? `<br><br><strong>Reason:</strong> ${reason}` : ''}</p>
+        <p>Best regards,<br>FuelGo Nigeria Team</p>
+      </div>
+    `,
+  }),
 };
 
 // Email templates

@@ -16,7 +16,7 @@ export default function Register() {
     password: '',
     confirmPassword: '',
     phone: '',
-    role: 'customer' as UserRole,
+    role: 'CUSTOMER' as UserRole,
     // Driver specific
     licenseNumber: '',
     vehicleType: '',
@@ -47,7 +47,12 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...registerData } = formData;
-      await register(registerData as RegisterData);
+      // Map phone to phoneNumber for backend compatibility
+      const mappedData = {
+        ...registerData,
+        phone: registerData.phone // Keep as 'phone' since backend expects 'phone' in the request body
+      };
+      await register(mappedData as RegisterData);
       toast.success('Registration successful! Please wait for admin approval.');
       navigate('/login');
     } catch (error: any) {
@@ -154,13 +159,13 @@ export default function Register() {
                 onChange={handleChange}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
               >
-                <option value="customer">Customer</option>
-                <option value="driver">Driver</option>
-                <option value="vendor">Vendor</option>
+                <option value="CUSTOMER">Customer</option>
+                <option value="DRIVER">Driver</option>
+                <option value="VENDOR">Vendor</option>
               </select>
             </div>
 
-            {formData.role === 'driver' && (
+            {formData.role === 'DRIVER' && (
               <>
                 <div>
                   <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700">
@@ -209,7 +214,7 @@ export default function Register() {
               </>
             )}
 
-            {formData.role === 'vendor' && (
+            {formData.role === 'VENDOR' && (
               <>
                 <div>
                   <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">

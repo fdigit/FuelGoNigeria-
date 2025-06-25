@@ -117,7 +117,7 @@ function HomePage() {
                 // Show actual vendor cards
                 vendors.map((vendor) => (
                   <VendorCard
-                    key={vendor.id}
+                    key={vendor._id}
                     vendor={vendor}
                     onOrder={handleOrder}
                   />
@@ -143,7 +143,7 @@ function AppRoutes() {
       <Route 
         path="/dashboard/*" 
         element={
-          <ProtectedRoute roles={['customer', 'admin', 'driver', 'vendor']}>
+          <ProtectedRoute roles={['CUSTOMER', 'ADMIN', 'DRIVER', 'VENDOR']}>
             <Layout>
               <Routes>
                 <Route index element={<DashboardRouter />} />

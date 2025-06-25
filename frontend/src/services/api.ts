@@ -25,7 +25,8 @@ export interface AdminInvitation {
   expiresAt: string;
 }
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Use environment variable for API URL, fallback to localhost for development
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -38,10 +39,36 @@ const api = axios.create({
 // Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Get token from user object in localStorage
+    const storedUser = localStorage.getItem('user');
+    let token = null;
+    
+    console.log('Request interceptor - storedUser:', storedUser);
+    
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        token = userData.token;
+        console.log('Request interceptor - token from user data:', token ? 'Present' : 'Missing');
+      } catch (error) {
+        console.log('Error parsing user data from localStorage:', error);
+      }
     }
+    
+    // Also try to get token directly
+    const directToken = localStorage.getItem('token');
+    console.log('Request interceptor - direct token:', directToken ? 'Present' : 'Missing');
+    
+    // Use direct token if available, otherwise use token from user data
+    const finalToken = directToken || token;
+    
+    if (finalToken && config.headers) {
+      config.headers.Authorization = `Bearer ${finalToken}`;
+      console.log('Request interceptor - Authorization header set');
+    } else {
+      console.log('Request interceptor - No token available');
+    }
+    
     return config;
   },
   (error) => {
@@ -53,9 +80,22 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.log('API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message
+    });
+    
     if (error.response?.status === 401) {
+      // Don't auto-logout for vendor profile endpoints - let the component handle it
+      if (error.config?.url?.includes('/api/vendor/profile')) {
+        console.log('Vendor profile 401 error - not auto-logging out');
+        return Promise.reject(error);
+      }
+      
       // Only redirect to login if we're not already on the login page
       if (!window.location.pathname.includes('/login')) {
+        console.log('Auto-logging out due to 401 error');
         localStorage.removeItem('token');
         window.location.href = '/login';
       }
@@ -157,6 +197,27 @@ export const adminService = {
       console.error('Error listing admin invitations:', error);
       throw error;
     }
+  },
+
+  // New admin vendor management functions
+  getVendors: async (): Promise<Vendor[]> => {
+    try {
+      const response = await api.get<Vendor[]>('/api/admin/vendors');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      throw error;
+    }
+  },
+
+  updateVendorStatus: async (vendorId: string, status: 'verified' | 'rejected'): Promise<{ message: string; vendor: Vendor }> => {
+    try {
+      const response = await api.patch<{ message: string; vendor: Vendor }>(`/api/admin/vendors/${vendorId}/verify`, { status });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating vendor status:', error);
+      throw error;
+    }
   }
 };
 
@@ -175,33 +236,46 @@ export const vendorService = {
 
       const vendors = response.data.map((vendor: any): VendorDisplay => {
         console.log('Processing vendor:', vendor);
+        console.log('Vendor logo:', vendor.logo);
         
         // Calculate price range from products
         const prices = vendor.products?.map((p: Product) => p.price_per_unit) || [];
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const minPrice = Math.min(...prices, 650); // Default to 650 if no products
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const maxPrice = Math.max(...prices, 680); // Default to 680 if no products
 
+        // Construct full logo URL if it's a relative path
+        let fullLogoUrl = vendor.logo;
+        if (vendor.logo && vendor.logo.startsWith('/uploads/')) {
+          // Remove '/api' from the API_URL since we're accessing static files
+          const baseUrl = API_URL.replace('/api', '');
+          fullLogoUrl = `${baseUrl}${vendor.logo}`;
+          console.log('Constructed full logo URL:', fullLogoUrl);
+        }
+
         const transformedVendor = {
-          id: vendor._id,
-          name: vendor.business_name,
-          location: `${vendor.address.city}, ${vendor.address.state}`,
-          rating: vendor.average_rating || 0,
-          totalRatings: vendor.total_ratings || 0,
-          isTopVendor: (vendor.average_rating || 0) >= 4.5,
-          hasFastDelivery: true,
-          hasHotPrice: true,
-          priceRange: {
-            min: minPrice,
-            max: maxPrice,
-          },
-          deliveryTime: 'Within 30 mins',
-          fuelTypes: vendor.fuel_types || [],
-          contact: {
-            name: `${vendor.user_id?.firstName || ''} ${vendor.user_id?.lastName || ''}`,
-            email: vendor.user_id?.email || '',
-            phone: vendor.user_id?.phoneNumber || '',
-          },
-          products: vendor.products || []
+          _id: vendor._id,
+          business_name: vendor.business_name,
+          image: vendor.image,
+          logo: fullLogoUrl,
+          verification_status: vendor.verification_status,
+          address: vendor.address,
+          average_rating: vendor.average_rating,
+          total_ratings: vendor.total_ratings,
+          operating_hours: vendor.operating_hours,
+          fuel_types: vendor.fuel_types,
+          contact: vendor.contact,
+          services: vendor.services,
+          payment_methods: vendor.payment_methods,
+          minimum_order: vendor.minimum_order,
+          delivery_fee: vendor.delivery_fee,
+          rating: vendor.rating,
+          reviews: vendor.reviews,
+          is_verified: vendor.is_verified,
+          is_active: vendor.is_active,
+          created_at: vendor.created_at,
+          updated_at: vendor.updated_at,
         };
         console.log('Transformed vendor:', transformedVendor);
         return transformedVendor;
@@ -211,17 +285,60 @@ export const vendorService = {
       return vendors;
     } catch (error) {
       console.error('Error fetching vendors:', error);
-      if (axios.isAxiosError(error)) {
-        console.error('API Error Details:', {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          headers: error.response?.headers,
-        });
+      throw error;
+    }
+  },
+
+  // Vendor Profile Service
+  getProfile: async (): Promise<any> => {
+    try {
+      const response = await api.get('/api/vendor/profile');
+      const profileData = response.data;
+      
+      // Construct full logo URL if it's a relative path
+      if (profileData.logo && profileData.logo.startsWith('/uploads/')) {
+        const baseUrl = API_URL.replace('/api', '');
+        profileData.logo = `${baseUrl}${profileData.logo}`;
+        console.log('Profile logo URL constructed:', profileData.logo);
+      }
+      
+      return profileData;
+    } catch (error: any) {
+      console.error('Error fetching vendor profile:', error);
+      // Re-throw the error but with more context
+      if (error.response?.status === 404) {
+        throw new Error('Vendor profile not found');
       }
       throw error;
     }
   },
+
+  updateProfile: async (profileData: any): Promise<{ message: string; profile: any }> => {
+    try {
+      const response = await api.put('/api/vendor/profile', profileData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error updating vendor profile:', error);
+      throw error;
+    }
+  },
+
+  uploadLogo: async (file: File): Promise<{ message: string; logoUrl: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await api.post('/api/vendor/logo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      throw error;
+    }
+  }
 };
 
 export default api; 

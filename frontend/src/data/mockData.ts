@@ -47,109 +47,67 @@ export const testimonials = [
 
 export const mockVendors: Vendor[] = [
   {
-    id: '1',
-    name: 'Quick Fuel Station',
-    location: 'Lagos, Victoria Island',
-    rating: 4.5,
-    totalRatings: 128,
-    isTopVendor: true,
-    hasFastDelivery: true,
-    hasHotPrice: true,
-    priceRange: {
-      min: 650,
-      max: 680
+    _id: '1',
+    business_name: 'QuickFuel Station',
+    image: '/images/station1.jpg',
+    verification_status: 'verified',
+    address: {
+      city: 'Lagos',
+      state: 'Lagos',
+      country: 'Nigeria',
     },
-    deliveryTime: 'Within 30 mins',
-    fuelTypes: ['Petrol (PMS)', 'Diesel (AGO)'],
+    average_rating: 4.5,
+    total_ratings: 120,
+    operating_hours: {
+      open: '06:00',
+      close: '22:00',
+    },
+    fuel_types: ['PMS', 'Diesel'],
     contact: {
-      name: 'John Doe',
+      phone: '+2341234567890',
       email: 'john@quickfuel.com',
-      phone: '+2341234567890'
     },
-    products: [
-      {
-        _id: 'p1',
-        type: 'PMS',
-        name: 'Premium Petrol',
-        description: 'High-quality premium petrol',
-        price_per_unit: 650,
-        unit: 'litre',
-        available_qty: 1000,
-        min_order_qty: 5,
-        max_order_qty: 100,
-        status: 'available',
-        specifications: {
-          octane_rating: 95
-        }
-      },
-      {
-        _id: 'p2',
-        type: 'Diesel',
-        name: 'Automotive Diesel',
-        description: 'High-quality diesel fuel',
-        price_per_unit: 680,
-        unit: 'litre',
-        available_qty: 800,
-        min_order_qty: 5,
-        max_order_qty: 100,
-        status: 'available',
-        specifications: {
-          cetane_number: 51
-        }
-      }
-    ]
+    services: ['Car Wash', 'Mini Mart'],
+    payment_methods: ['Cash', 'Card'],
+    minimum_order: 20,
+    delivery_fee: 500,
+    rating: 4.5,
+    reviews: 120,
+    is_verified: true,
+    is_active: true,
+    created_at: '2023-01-01T00:00:00Z',
+    updated_at: '2023-01-01T00:00:00Z',
   },
   {
-    id: '2',
-    name: 'City Gas Station',
-    location: 'Lagos, Ikeja',
-    rating: 4.2,
-    totalRatings: 95,
-    isTopVendor: false,
-    hasFastDelivery: true,
-    hasHotPrice: false,
-    priceRange: {
-      min: 645,
-      max: 675
+    _id: '2',
+    business_name: 'CityGas',
+    image: '/images/station2.jpg',
+    verification_status: 'pending',
+    address: {
+      city: 'Abuja',
+      state: 'FCT',
+      country: 'Nigeria',
     },
-    deliveryTime: 'Within 45 mins',
-    fuelTypes: ['Petrol (PMS)', 'Diesel (AGO)'],
+    average_rating: 4.2,
+    total_ratings: 80,
+    operating_hours: {
+      open: '07:00',
+      close: '21:00',
+    },
+    fuel_types: ['PMS', 'Diesel', 'Kerosene'],
     contact: {
-      name: 'Jane Smith',
+      phone: '+2349876543210',
       email: 'jane@citygas.com',
-      phone: '+2349876543210'
     },
-    products: [
-      {
-        _id: 'p3',
-        type: 'PMS',
-        name: 'Regular Petrol',
-        description: 'Standard quality petrol',
-        price_per_unit: 645,
-        unit: 'litre',
-        available_qty: 1200,
-        min_order_qty: 5,
-        max_order_qty: 100,
-        status: 'available',
-        specifications: {
-          octane_rating: 87
-        }
-      },
-      {
-        _id: 'p4',
-        type: 'Diesel',
-        name: 'Automotive Diesel',
-        description: 'Standard quality diesel fuel',
-        price_per_unit: 675,
-        unit: 'litre',
-        available_qty: 900,
-        min_order_qty: 5,
-        max_order_qty: 100,
-        status: 'available',
-        specifications: {
-          cetane_number: 48
-        }
-      }
-    ]
-  }
+    services: ['Tyre Service'],
+    payment_methods: ['Cash', 'Card', 'Transfer'],
+    minimum_order: 10,
+    delivery_fee: 700,
+    rating: 4.2,
+    reviews: 80,
+    is_verified: false,
+    is_active: true,
+    created_at: '2023-01-01T00:00:00Z',
+    updated_at: '2023-01-01T00:00:00Z',
+  },
 ]; 

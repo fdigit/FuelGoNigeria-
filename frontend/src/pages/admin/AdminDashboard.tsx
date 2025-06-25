@@ -11,6 +11,7 @@ import ReportsAnalytics from './sections/ReportsAnalytics';
 import PlatformSettings from './sections/PlatformSettings';
 import AuditLogs from './sections/AuditLogs';
 import AdminRoles from './sections/AdminRoles';
+import VendorManagement from './sections/VendorManagement';
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -19,6 +20,7 @@ export default function AdminDashboard() {
   const sections = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'users', label: 'User Management', icon: '👥' },
+    { id: 'vendors', label: 'Vendor Management', icon: '⛽' },
     { id: 'orders', label: 'Order Oversight', icon: '📦' },
     { id: 'disputes', label: 'Dispute Resolution', icon: '⚖️' },
     { id: 'commission', label: 'Commission Settings', icon: '💰' },
@@ -36,6 +38,8 @@ export default function AdminDashboard() {
         return <Overview />;
       case 'users':
         return <UserManagement />;
+      case 'vendors':
+        return <VendorManagement />;
       case 'orders':
         return <OrderOversight />;
       case 'disputes':

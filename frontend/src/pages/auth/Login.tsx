@@ -18,26 +18,26 @@ export default function Login() {
     try {
       const { user } = await login(email, password);
       
-      // Check if account is pending approval
-      if (user.status === 'pending') {
-        toast.info('Your account is pending approval. Please wait for admin verification.');
-        return;
-      }
-
       // Redirect based on role
-      switch (user.role) {
-        case 'customer':
-        case 'driver':
-        case 'vendor':
-        case 'admin':
-        case 'super_admin':
+      const userRole = user.role;
+      switch (userRole) {
+        case 'CUSTOMER':
+        case 'DRIVER':
+        case 'VENDOR':
+        case 'ADMIN':
+        case 'SUPER_ADMIN':
           navigate('/dashboard');
           break;
         default:
           navigate('/dashboard');
       }
     } catch (error: any) {
-      toast.error(error.message || 'Invalid email or password');
+      // Handle pending account status
+      if (error.status === 'pending') {
+        toast.info('Your account is pending approval. Please wait for admin verification.');
+      } else {
+        toast.error(error.message || 'Invalid email or password');
+      }
       console.error('Login error:', error);
     } finally {
       setLoading(false);

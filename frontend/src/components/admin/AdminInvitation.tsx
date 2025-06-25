@@ -15,7 +15,7 @@ const AdminInvitation: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('admin');
+  const [role, setRole] = useState('ADMIN');
 
   const fetchInvitations = async () => {
     try {
@@ -39,7 +39,7 @@ const AdminInvitation: React.FC = () => {
       await adminService.createAdminInvitation(email, role);
       setShowModal(false);
       setEmail('');
-      setRole('admin');
+      setRole('ADMIN');
       fetchInvitations();
       showToast('success', 'Invitation sent successfully');
     } catch (error) {
@@ -125,8 +125,8 @@ const AdminInvitation: React.FC = () => {
                 value={role}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRole(e.target.value)}
               >
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
+                <option value="ADMIN">Admin</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
               </Form.Select>
             </Form.Group>
             <Button type="submit" variant="primary">
