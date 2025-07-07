@@ -8,7 +8,7 @@
     "dev:backend": "node dev-server.js",
     "dev:frontend": "cd frontend && npm start",
     "build": "npm run build:frontend && npm run build:api",
-    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:frontend": "node scripts/set-api-url.js && cd frontend && npm install && npm run build",
     "build:api": "npm run db:generate",
     "build:backend": "tsc -p backend/tsconfig.json",
     "start": "node dev-server.js",
