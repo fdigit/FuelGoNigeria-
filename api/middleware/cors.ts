@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { ApiRequest, ApiResponse } from '../types/api';
 
 const allowedOrigins = [
   'http://localhost:3000',
@@ -8,10 +8,10 @@ const allowedOrigins = [
   'https://fuelgo-nigeria-git-dev.vercel.app'
 ];
 
-export function cors(req: NextApiRequest, res: NextApiResponse) {
+export function cors(req: ApiRequest, res: ApiResponse) {
   const origin = req.headers.origin;
   
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && typeof origin === 'string' && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   
