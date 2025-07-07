@@ -9,7 +9,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: string;
+        userId: string;
+        vendorId?: string;
         email: string;
         role: string;
       };
@@ -38,7 +39,8 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
         id: true,
         email: true,
         role: true,
-        status: true
+        status: true,
+        vendor: { select: { id: true } }
       }
     });
 
@@ -50,9 +52,10 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     }
 
     req.user = {
-      id: user.id,
+      userId: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      vendorId: user.vendor?.id
     };
 
     next();
@@ -63,6 +66,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       message: 'Invalid token'
     });
   }
+  return;
 };
 
 export const requireRole = (roles: string[]) => {
@@ -82,5 +86,6 @@ export const requireRole = (roles: string[]) => {
     }
 
     next();
+    return;
   };
 }; 

@@ -19,6 +19,7 @@ export const orderController = {
   // Create new order
   async createOrder(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
       const { vendorId, orderItems, deliveryAddress, phoneNumber, paymentMethod, specialInstructions } = req.body;
 
@@ -37,7 +38,7 @@ export const orderController = {
 
       // Validate and calculate order
       let subtotal = 0;
-      const validatedItems = [];
+      const validatedItems: any[] = [];
 
       for (const item of orderItems) {
         const product = await prisma.product.findFirst({
@@ -153,8 +154,12 @@ export const orderController = {
       });
 
       // Send notifications
-      const notificationService = new NotificationService();
-      await notificationService.sendOrderNotification(order, 'NEW_ORDER');
+      await NotificationService.sendOrderStatusNotification(order.userId, order.id, 'pending');
+      // Fetch vendor's userId for notification
+      const vendorUser = await prisma.vendor.findUnique({ where: { id: order.vendorId }, select: { userId: true } });
+      if (vendorUser) {
+        await NotificationService.sendOrderStatusNotification(vendorUser.userId, order.id, 'pending');
+      }
 
       // Send real-time update
       const webSocketService = (global as any).webSocketService as WebSocketService;
@@ -178,11 +183,13 @@ export const orderController = {
       console.error('Error creating order:', error);
       res.status(500).json({ message: 'Failed to create order' });
     }
+    return;
   },
 
   // Get customer orders
   async getCustomerOrders(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
       const { status, dateRange, search, page = 1, limit = 10 } = req.query;
 
@@ -267,11 +274,13 @@ export const orderController = {
       console.error('Error fetching customer orders:', error);
       res.status(500).json({ message: 'Failed to fetch orders' });
     }
+    return;
   },
 
   // Get vendor orders
   async getVendorOrders(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
       const { status, dateRange, search, page = 1, limit = 10 } = req.query;
 
@@ -372,11 +381,13 @@ export const orderController = {
       console.error('Error fetching vendor orders:', error);
       res.status(500).json({ message: 'Failed to fetch orders' });
     }
+    return;
   },
 
   // Get single order
   async getOrderById(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
       const userId = req.user.userId;
       const userRole = req.user.role;
@@ -443,13 +454,15 @@ export const orderController = {
       console.error('Error fetching order:', error);
       res.status(500).json({ message: 'Failed to fetch order' });
     }
+    return;
   },
 
   // Update order status
   async updateOrderStatus(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
-      const { status, notes } = req.body;
+      const { status } = req.body;
       const userId = req.user.userId;
 
       // Verify vendor owns this order
@@ -473,10 +486,10 @@ export const orderController = {
       }
 
       // Validate status transition
-      const allowedTransitions = ORDER_STATUS_FLOW[order.status.toLowerCase()];
+      const allowedTransitions: string[] = ORDER_STATUS_FLOW[order.status.toLowerCase() as keyof typeof ORDER_STATUS_FLOW];
       if (!allowedTransitions.includes(status)) {
         return res.status(400).json({ 
-          message: `Cannot transition from ${order.status} to ${status}` 
+          message: `Invalid status transition from ${order.status} to ${status}` 
         });
       }
 
@@ -511,8 +524,7 @@ export const orderController = {
       });
 
       // Send notifications
-      const notificationService = new NotificationService();
-      await notificationService.sendOrderNotification(updatedOrder, 'STATUS_UPDATE', { notes });
+      await NotificationService.sendOrderStatusNotification(updatedOrder.userId, updatedOrder.id, updatedOrder.status);
 
       // Send real-time update
       const webSocketService = (global as any).webSocketService as WebSocketService;
@@ -529,11 +541,13 @@ export const orderController = {
       console.error('Error updating order status:', error);
       res.status(500).json({ message: 'Failed to update order status' });
     }
+    return;
   },
 
   // Assign driver to order
   async assignDriver(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
       const { driverId } = req.body;
       const userId = req.user.userId;
@@ -608,8 +622,12 @@ export const orderController = {
       });
 
       // Send notifications
-      const notificationService = new NotificationService();
-      await notificationService.sendOrderNotification(updatedOrder, 'DRIVER_ASSIGNED');
+      if (updatedOrder.driverId) {
+        const driver = await prisma.driver.findUnique({ where: { id: updatedOrder.driverId }, include: { user: true } });
+        if (driver && driver.user) {
+          await NotificationService.sendDeliveryNotification(updatedOrder.userId, updatedOrder.id, `${driver.user.firstName} ${driver.user.lastName}`);
+        }
+      }
 
       res.json({
         message: 'Driver assigned successfully',
@@ -620,19 +638,23 @@ export const orderController = {
       console.error('Error assigning driver:', error);
       res.status(500).json({ message: 'Failed to assign driver' });
     }
+    return;
   },
 
   // Cancel order
   async cancelOrder(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
-      const { reason } = req.body;
       const userId = req.user.userId;
 
       const order = await prisma.order.findFirst({
         where: {
           id: orderId,
           userId
+        },
+        include: {
+          orderItems: true
         }
       });
 
@@ -694,8 +716,7 @@ export const orderController = {
       });
 
       // Send notifications
-      const notificationService = new NotificationService();
-      await notificationService.sendOrderNotification(updatedOrder, 'ORDER_CANCELLED', { reason });
+      await NotificationService.sendOrderStatusNotification(updatedOrder.userId, updatedOrder.id, 'cancelled');
 
       res.json({
         message: 'Order cancelled successfully',
@@ -706,11 +727,13 @@ export const orderController = {
       console.error('Error cancelling order:', error);
       res.status(500).json({ message: 'Failed to cancel order' });
     }
+    return;
   },
 
   // Get order summary for pricing
   async getOrderSummary(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { vendorId, orderItems } = req.body;
 
       let subtotal = 0;
@@ -765,11 +788,13 @@ export const orderController = {
       console.error('Error calculating order summary:', error);
       res.status(500).json({ message: 'Failed to calculate order summary' });
     }
+    return;
   },
 
   // Admin intervention
   async adminIntervention(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
       const { action, reason, newStatus, driverId } = req.body;
       const userId = req.user.userId;
@@ -971,11 +996,13 @@ export const orderController = {
       console.error('Error performing admin intervention:', error);
       res.status(500).json({ message: 'Failed to perform admin intervention' });
     }
+    return;
   },
 
   // Get order analytics (admin only)
   async getOrderAnalytics(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
 
       // Verify admin role
@@ -1046,11 +1073,13 @@ export const orderController = {
       console.error('Error fetching order analytics:', error);
       res.status(500).json({ message: 'Failed to fetch analytics' });
     }
+    return;
   },
 
   // Driver-specific methods
   async getDriverOrders(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
       const { status, page = 1, limit = 10 } = req.query;
 
@@ -1115,10 +1144,12 @@ export const orderController = {
       console.error('Error fetching driver orders:', error);
       res.status(500).json({ message: 'Failed to fetch orders' });
     }
+    return;
   },
 
   async updateDriverLocation(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
       const { location } = req.body;
       const userId = req.user.userId;
@@ -1156,10 +1187,12 @@ export const orderController = {
       console.error('Error updating driver location:', error);
       res.status(500).json({ message: 'Failed to update location' });
     }
+    return;
   },
 
   async completeDelivery(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const { orderId } = req.params;
       const userId = req.user.userId;
 
@@ -1223,8 +1256,7 @@ export const orderController = {
       });
 
       // Send notifications
-      const notificationService = new NotificationService();
-      await notificationService.sendOrderNotification(updatedOrder, 'DELIVERY_COMPLETED');
+      await NotificationService.sendOrderStatusNotification(updatedOrder.userId, updatedOrder.id, 'delivered');
 
       res.json({
         message: 'Delivery completed successfully',
@@ -1235,11 +1267,13 @@ export const orderController = {
       console.error('Error completing delivery:', error);
       res.status(500).json({ message: 'Failed to complete delivery' });
     }
+    return;
   },
 
   // Get all orders (admin only)
   async getAllOrders(req: Request, res: Response) {
     try {
+      if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const userId = req.user.userId;
       const { status, dateRange, search, page = 1, limit = 10 } = req.query;
 
@@ -1347,5 +1381,6 @@ export const orderController = {
       console.error('Error fetching all orders:', error);
       res.status(500).json({ message: 'Failed to fetch orders' });
     }
+    return;
   }
 }; 

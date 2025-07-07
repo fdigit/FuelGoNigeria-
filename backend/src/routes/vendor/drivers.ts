@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -9,6 +8,7 @@ const prisma = new PrismaClient();
 // Get all drivers for a vendor
 router.get('/', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const vendorId = req.user.vendorId;
     
     const drivers = await prisma.driver.findMany({
@@ -57,12 +57,15 @@ router.get('/', async (req, res) => {
     console.error('Error fetching drivers:', error);
     res.status(500).json({ message: 'Error fetching drivers' });
   }
+  return;
 });
 
 // Add a new driver
 router.post('/', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const vendorId = req.user.vendorId;
+    if (!vendorId) return res.status(400).json({ message: 'Vendor ID is required' });
     const {
       firstName,
       lastName,
@@ -116,7 +119,7 @@ router.post('/', async (req, res) => {
     const driver = await prisma.driver.create({
       data: {
         userId: user.id,
-        vendorId,
+        vendorId: vendorId,
         firstName,
         lastName,
         email,
@@ -168,11 +171,13 @@ router.post('/', async (req, res) => {
     console.error('Error adding driver:', error);
     res.status(500).json({ message: 'Error adding driver' });
   }
+  return;
 });
 
 // Update driver status
 router.patch('/:driverId/status', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const { driverId } = req.params;
     const { status } = req.body;
     const vendorId = req.user.vendorId;
@@ -216,11 +221,13 @@ router.patch('/:driverId/status', async (req, res) => {
     console.error('Error updating driver status:', error);
     res.status(500).json({ message: 'Error updating driver status' });
   }
+  return;
 });
 
 // Update driver profile
 router.put('/:driverId', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const { driverId } = req.params;
     const vendorId = req.user.vendorId;
     const updateData = req.body;
@@ -293,11 +300,13 @@ router.put('/:driverId', async (req, res) => {
     console.error('Error updating driver profile:', error);
     res.status(500).json({ message: 'Error updating driver profile' });
   }
+  return;
 });
 
 // Deactivate driver
 router.patch('/:driverId/deactivate', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const { driverId } = req.params;
     const vendorId = req.user.vendorId;
 
@@ -326,11 +335,13 @@ router.patch('/:driverId/deactivate', async (req, res) => {
     console.error('Error deactivating driver:', error);
     res.status(500).json({ message: 'Error deactivating driver' });
   }
+  return;
 });
 
 // Get driver details
 router.get('/:driverId', async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const { driverId } = req.params;
     const vendorId = req.user.vendorId;
 
@@ -382,6 +393,7 @@ router.get('/:driverId', async (req, res) => {
     console.error('Error fetching driver details:', error);
     res.status(500).json({ message: 'Error fetching driver details' });
   }
+  return;
 });
 
 export default router; 

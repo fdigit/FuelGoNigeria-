@@ -7,7 +7,7 @@ const router = Router();
 // Get user notifications
 router.get('/', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const { limit, offset, unreadOnly, type } = req.query;
 
     const result = await NotificationService.getUserNotifications(userId!, {
@@ -33,7 +33,7 @@ router.get('/', authenticateToken, async (req: Request, res: Response) => {
 // Mark notification as read
 router.patch('/:id/read', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const notificationId = req.params.id;
 
     await NotificationService.markAsRead(notificationId, userId!);
@@ -54,7 +54,7 @@ router.patch('/:id/read', authenticateToken, async (req: Request, res: Response)
 // Mark all notifications as read
 router.patch('/read-all', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     await NotificationService.markAllAsRead(userId!);
 
@@ -74,7 +74,7 @@ router.patch('/read-all', authenticateToken, async (req: Request, res: Response)
 // Delete notification
 router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const notificationId = req.params.id;
 
     await NotificationService.deleteNotification(notificationId, userId!);
@@ -95,7 +95,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
 // Get notification preferences
 router.get('/preferences', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const preferences = await NotificationService.getUserPreferences(userId!);
 
@@ -115,7 +115,7 @@ router.get('/preferences', authenticateToken, async (req: Request, res: Response
 // Update notification preferences
 router.put('/preferences', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const preferences = req.body;
 
     const updatedPreferences = await NotificationService.updateUserPreferences(userId!, preferences);
@@ -158,6 +158,7 @@ router.get('/templates', authenticateToken, async (req: Request, res: Response) 
       message: 'Failed to fetch notification templates'
     });
   }
+  return;
 });
 
 // Create notification template (admin only)
@@ -186,6 +187,7 @@ router.post('/templates', authenticateToken, async (req: Request, res: Response)
       message: 'Failed to create notification template'
     });
   }
+  return;
 });
 
 // Send bulk notification (admin only)
@@ -215,6 +217,7 @@ router.post('/send-bulk', authenticateToken, async (req: Request, res: Response)
       message: 'Failed to send bulk notifications'
     });
   }
+  return;
 });
 
 // Send notification by role (admin only)
@@ -244,6 +247,7 @@ router.post('/send-by-role', authenticateToken, async (req: Request, res: Respon
       message: 'Failed to send notifications by role'
     });
   }
+  return;
 });
 
 export default router; 

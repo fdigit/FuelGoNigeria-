@@ -5,15 +5,17 @@ const prisma = new PrismaClient();
 const router = Router();
 
 // TODO: Replace with real authentication middleware
-const fakeAuth = (req: Request, res: Response, next: any) => {
+const fakeAuth = (req: Request, _res: Response, next: any) => {
   // Simulate vendor userId from token
-  req.user = { userId: req.headers['x-user-id'] || 'FAKE_VENDOR_ID' };
+  const userId = Array.isArray(req.headers['x-user-id']) ? req.headers['x-user-id'][0] : req.headers['x-user-id'] || 'FAKE_VENDOR_ID';
+  req.user = { userId, vendorId: undefined, email: '', role: 'VENDOR' };
   next();
 };
 
 // GET /api/vendor/products
 router.get('/', fakeAuth, async (req: Request, res: Response) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const userId = req.user.userId;
     const vendor = await prisma.vendor.findUnique({
       where: { userId },
@@ -38,11 +40,13 @@ router.get('/', fakeAuth, async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ message: 'Error fetching products' });
   }
+  return;
 });
 
 // POST /api/vendor/products
 router.post('/', fakeAuth, async (req: Request, res: Response) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const userId = req.user.userId;
     const vendor = await prisma.vendor.findUnique({ where: { userId } });
     if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
@@ -80,11 +84,13 @@ router.post('/', fakeAuth, async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ message: 'Error creating product' });
   }
+  return;
 });
 
 // PUT /api/vendor/products/:productId
 router.put('/:productId', fakeAuth, async (req: Request, res: Response) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const userId = req.user.userId;
     const { productId } = req.params;
     const vendor = await prisma.vendor.findUnique({ where: { userId } });
@@ -124,11 +130,13 @@ router.put('/:productId', fakeAuth, async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ message: 'Error updating product' });
   }
+  return;
 });
 
 // DELETE /api/vendor/products/:productId
 router.delete('/:productId', fakeAuth, async (req: Request, res: Response) => {
   try {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const userId = req.user.userId;
     const { productId } = req.params;
     const vendor = await prisma.vendor.findUnique({ where: { userId } });
@@ -140,6 +148,7 @@ router.delete('/:productId', fakeAuth, async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ message: 'Error deleting product' });
   }
+  return;
 });
 
 export default router; 
