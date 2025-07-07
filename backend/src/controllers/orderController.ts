@@ -85,7 +85,7 @@ export const orderController = {
       }
 
       // Create order with transaction
-      const order = await prisma.$transaction(async (tx) => {
+      const order = await prisma.$transaction(async (tx: any) => {
         // Create order
         const newOrder = await tx.order.create({
           data: {
@@ -669,7 +669,7 @@ export const orderController = {
         });
       }
 
-      const updatedOrder = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await prisma.$transaction(async (tx: any) => {
         // Update order status
         const cancelledOrder = await tx.order.update({
           where: { id: orderId },
@@ -1215,7 +1215,7 @@ export const orderController = {
         return res.status(404).json({ message: 'Order not found' });
       }
 
-      const updatedOrder = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await prisma.$transaction(async (tx: any) => {
         // Update order status
         const deliveredOrder = await tx.order.update({
           where: { id: orderId },

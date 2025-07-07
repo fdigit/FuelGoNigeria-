@@ -22,7 +22,7 @@ router.get('/', fakeAuth, async (req: Request, res: Response) => {
       include: { products: true }
     });
     if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
-    const products = vendor.products.map(product => ({
+    const products = vendor.products.map((product: any) => ({
       _id: product.id,
       name: product.name,
       type: product.type,

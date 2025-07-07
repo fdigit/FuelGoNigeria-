@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
       }
     });
 
-    const transformedDrivers = drivers.map(driver => ({
+    const transformedDrivers = drivers.map((driver: any) => ({
       id: driver.id,
       name: `${driver.firstName} ${driver.lastName}`,
       email: driver.email,
