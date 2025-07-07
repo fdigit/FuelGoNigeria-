@@ -15,6 +15,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   try {
     const { email, password } = req.body;
     
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
     // Find user
     const user = await prisma.user.findUnique({
       where: { email }

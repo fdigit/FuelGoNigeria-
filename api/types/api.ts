@@ -4,6 +4,7 @@ export interface ApiRequest {
   headers: Record<string, string | string[] | undefined>;
   query: Record<string, string | string[]>;
   cookies: Record<string, string>;
+  url?: string;
   user?: any;
 }
 

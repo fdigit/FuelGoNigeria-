@@ -1,93 +1,150 @@
-# FuelGo Nigeria
+# FuelGo Nigeria - Fuel Delivery Platform
 
-A web-based solution for real-time fuel price tracking, online ordering, and delivery of fuel to homes, offices, or roadside locations.
+A full-stack fuel delivery platform built with React, Node.js, and MongoDB.
 
-## Features
-
-- Real-time fuel price tracking from vendors
-- Online ordering and delivery of fuel
-- Emergency fuel services
-- Multiple user roles (Customers, Vendors, Drivers, Admin)
-- Real-time order tracking
-- Payment integration with Paystack
-- Vendor and driver ratings system
-
-## Tech Stack
-
-- **Frontend:** React.js + Tailwind CSS
-- **Backend:** Node.js + Express.js
-- **Database:** PostgreSQL (primary), Redis (session/cache)
-- **Real-time Location:** Google Maps API + Socket.IO
-- **Authentication:** JWT + bcrypt
-- **Payment:** Paystack
-- **Notifications:** Email (Nodemailer), SMS (Termii/Infobip), Push (OneSignal)
-
-## Project Structure
-
-```
-fuelgo-nigeria/
-├── frontend/           # React frontend application
-├── backend/           # Node.js + Express backend
-├── shared/            # Shared types and utilities
-└── docs/             # Project documentation
-```
-
-## Getting Started
+## 🚀 Quick Deploy to Vercel
 
 ### Prerequisites
+- Vercel account
+- MongoDB Atlas database
+- Node.js 18+ installed
 
-- Node.js (v18 or higher)
-- PostgreSQL
-- Redis
-- npm or yarn
+### Environment Variables
+
+Set these in your Vercel project settings:
+
+```env
+DATABASE_URL=mongodb+srv://fmfonn:VStbtHxS8TT1Bex5@cluster0.ssoqdin.mongodb.net/fuelgo-nigeria?retryWrites=true&w=majority
+JWT_SECRET=fuelgo-nigeria-jwt-secret-2024-super-secure-key-change-in-production
+NODE_ENV=production
+REACT_APP_API_URL=https://your-app-name.vercel.app/api
+```
+
+### Deployment Steps
+
+1. **Install Vercel CLI**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Login to Vercel**
+   ```bash
+   vercel login
+   ```
+
+3. **Deploy**
+   ```bash
+   # For Unix/Linux/Mac
+   npm run deploy:setup
+   
+   # For Windows
+   npm run deploy:windows
+   
+   # Or simple deploy
+   npm run deploy
+   ```
+
+## 🏗️ Local Development
 
 ### Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/fuelgo-nigeria.git
-   cd fuelgo-nigeria
-   ```
+```bash
+# Install all dependencies
+npm run install:all
 
-2. Install dependencies:
-   ```bash
-   # Install frontend dependencies
-   cd frontend
-   npm install
+# Generate Prisma client
+npm run db:generate
 
-   # Install backend dependencies
-   cd ../backend
-   npm install
-   ```
+# Start development server
+npm run dev
+```
 
-3. Set up environment variables:
-   - Copy `.env.example` to `.env` in both frontend and backend directories
-   - Fill in the required environment variables
+### Available Scripts
 
-4. Start the development servers:
-   ```bash
-   # Start backend server
-   cd backend
-   npm run dev
+- `npm run dev` - Start development servers
+- `npm run build` - Build for production
+- `npm run deploy` - Deploy to Vercel
+- `npm run db:generate` - Generate Prisma client
+- `npm run db:push` - Push schema to database
+- `npm run db:studio` - Open Prisma Studio
 
-   # Start frontend server
-   cd frontend
-   npm run dev
-   ```
+## 📁 Project Structure
 
-## Development
+```
+├── api/                    # Serverless API functions
+│   ├── auth/              # Authentication endpoints
+│   ├── vendor/            # Vendor management
+│   ├── middleware/        # CORS and middleware
+│   └── types/             # TypeScript types
+├── frontend/              # React application
+│   ├── src/               # React source code
+│   ├── public/            # Static assets
+│   └── build/             # Production build
+├── backend/               # Express.js backend (development)
+├── prisma/                # Database schema
+├── scripts/               # Deployment scripts
+└── vercel.json            # Vercel configuration
+```
 
-- Frontend runs on: http://localhost:3000
-- Backend API runs on: http://localhost:5000
+## 🔧 Configuration
 
-## Contributing
+### Frontend Configuration
+The frontend automatically detects the environment and uses the appropriate API URL:
+- Development: `http://localhost:5000/api`
+- Production: `https://your-app-name.vercel.app/api`
+
+### Database
+- Uses MongoDB Atlas with Prisma ORM
+- Schema defined in `prisma/schema.prisma`
+- Automatic migrations with `npm run db:push`
+
+## 🌐 API Endpoints
+
+- `GET /api/health` - Health check
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
+- `GET /api/auth/validate-token` - Token validation
+- `GET /api/vendor` - Vendor listing
+
+## 🔒 Security
+
+- JWT-based authentication
+- Password hashing with bcrypt
+- CORS protection
+- Environment variable protection
+
+## 📊 Features
+
+- User authentication and authorization
+- Vendor management
+- Product catalog
+- Order management
+- Payment processing
+- Real-time notifications
+- Driver assignment
+- Review system
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express, TypeScript
+- **Database**: MongoDB with Prisma ORM
+- **Deployment**: Vercel
+- **Authentication**: JWT
+- **Payments**: Paystack integration
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## License
+## 📞 Support
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+For support, email support@fuelgo-nigeria.com or create an issue in this repository. 
