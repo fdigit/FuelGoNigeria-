@@ -1,25 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { mockVendors } from '../data/mockData';
 import VendorGrid from '../components/vendors/VendorGrid';
 import FilterBar from '../components/vendors/FilterBar';
 import { useToast } from '../contexts/ToastContext';
+import { vendorService } from '../services/api';
 import type { Vendor } from '../types';
 import Footer from '../components/layout/Footer';
 
 export default function Vendors() {
-  const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { showToast } = useToast();
 
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    loadVendors();
   }, []);
+
+  const loadVendors = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Loading vendors...');
+      const vendorsData = await vendorService.getVendors();
+      console.log('Vendors loaded:', vendorsData);
+      setVendors(vendorsData);
+    } catch (error) {
+      console.error('Error loading vendors:', error);
+      showToast('error', 'Failed to load vendors');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFilterChange = (filters: any) => {
     // Implement filter logic here
@@ -27,7 +37,7 @@ export default function Vendors() {
   };
 
   const handleReset = () => {
-    setVendors(mockVendors);
+    loadVendors();
     showToast('info', 'Filters have been reset');
   };
 
@@ -35,9 +45,7 @@ export default function Vendors() {
     showToast('info', 'Showing vendors near your location');
   };
 
-  const handleOrder = (vendorId: string) => {
-    showToast('success', 'Order request sent successfully!');
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -71,7 +79,6 @@ export default function Vendors() {
             <VendorGrid 
               vendors={vendors} 
               isLoading={isLoading}
-              onOrder={handleOrder}
             />
           </div>
         </div>

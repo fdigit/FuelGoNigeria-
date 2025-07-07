@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -9,7 +9,9 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import DashboardRouter from './components/dashboard/DashboardRouter';
 import Profile from './pages/dashboard/Profile';
+import VendorDetail from './pages/vendor/VendorDetail';
 import { ToastProvider } from './contexts/ToastContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Navbar from './components/layout/Navbar';
 import Hero from './components/home/Hero';
 import FilterBar from './components/vendors/FilterBar';
@@ -17,8 +19,6 @@ import VendorCard from './components/vendors/VendorCard';
 import VendorCardSkeleton from './components/vendors/VendorCardSkeleton';
 import { useToast } from './contexts/ToastContext';
 import type { Vendor } from './types';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import theme from './theme';
 import { vendorService } from './services/api';
 
@@ -27,6 +27,7 @@ function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState('');
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -76,7 +77,7 @@ function HomePage() {
   };
 
   const handleOrder = (vendorId: string) => {
-    showToast('success', 'Order request sent successfully!');
+    navigate(`/vendor/${vendorId}`);
   };
 
   return (
@@ -138,6 +139,7 @@ function AppRoutes() {
       <Route path="/" element={<Layout><HomePage /></Layout>} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/vendor/:vendorId" element={<Layout><VendorDetail /></Layout>} />
 
       {/* Protected routes */}
       <Route 
@@ -165,21 +167,11 @@ function App() {
     <ChakraProvider theme={theme}>
       <AuthProvider>
         <ToastProvider>
-          <Router>
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-            <AppRoutes />
-          </Router>
+          <NotificationProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
+          </NotificationProvider>
         </ToastProvider>
       </AuthProvider>
     </ChakraProvider>

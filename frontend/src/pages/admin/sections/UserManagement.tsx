@@ -1,45 +1,172 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FiUsers, 
+  FiSearch, 
+  FiFilter, 
+  FiDownload, 
+  FiUpload, 
+  FiMoreVertical, 
+  FiEye, 
+  FiEdit, 
+  FiTrash2, 
+  FiShield, 
+  FiClock, 
+  FiCheckCircle, 
+  FiXCircle, 
+  FiAlertTriangle,
+  FiUserPlus,
+  FiActivity,
+  FiBarChart,
+  FiSettings,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiCalendar,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiUserCheck,
+  FiUserX,
+  FiRefreshCw,
+  FiChevronDown,
+  FiChevronUp,
+  FiPlus,
+  FiMinus,
+  FiX
+} from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { User, UserStatus, UserRole } from '../../../types/user';
 import { useToast } from '../../../contexts/ToastContext';
+import adminService from '../../../services/admin.service';
+import { API_URL } from '../../../config';
+import { 
+  UserDetailsModal, 
+  EditUserModal, 
+  DeleteUserModal, 
+  BulkActionModal 
+} from '../../../components/admin/UserManagementModals';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+// Type assertion to ensure icons are treated as React components
+const FiUsersIcon = FiUsers as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiSearchIcon = FiSearch as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiFilterIcon = FiFilter as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiDownloadIcon = FiDownload as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiUploadIcon = FiUpload as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiMoreVerticalIcon = FiMoreVertical as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiEyeIcon = FiEye as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiEditIcon = FiEdit as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiTrash2Icon = FiTrash2 as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiShieldIcon = FiShield as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiClockIcon = FiClock as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiCheckCircleIcon = FiCheckCircle as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiXCircleIcon = FiXCircle as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiAlertTriangleIcon = FiAlertTriangle as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiUserPlusIcon = FiUserPlus as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiActivityIcon = FiActivity as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiBarChartIcon = FiBarChart as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiSettingsIcon = FiSettings as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiMailIcon = FiMail as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiPhoneIcon = FiPhone as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiMapPinIcon = FiMapPin as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiCalendarIcon = FiCalendar as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiTrendingUpIcon = FiTrendingUp as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiTrendingDownIcon = FiTrendingDown as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiUserCheckIcon = FiUserCheck as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiUserXIcon = FiUserX as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiRefreshCwIcon = FiRefreshCw as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiChevronDownIcon = FiChevronDown as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiChevronUpIcon = FiChevronUp as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiPlusIcon = FiPlus as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiMinusIcon = FiMinus as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+const FiXIcon = FiX as React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
+interface UserStats {
+  totalUsers: number;
+  pendingUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  rejectedUsers: number;
+  usersByRole: Array<{ role: string; count: number }>;
+  recentRegistrations: number;
+  userGrowthRate?: number;
+  newUsersThisWeek?: number;
+}
+
+interface UserFilters {
+  search: string;
+  status: string;
+  role: string;
+  dateRange: { start: string; end: string };
+  verified: string;
+  lastActive: string;
+}
 
 export default function UserManagement() {
   const { showToast } = useToast();
   const { user: authUser } = useAuth();
+  
+  // State management
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all');
-  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [showUserActivity, setShowUserActivity] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  // Pagination
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState(25);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [totalUsers, setTotalUsers] = useState(0);
+  
+  // Filters
+  const [filters, setFilters] = useState<UserFilters>({
+    search: '',
+    status: 'all',
+    role: 'all',
+    dateRange: { start: '', end: '' },
+    verified: 'all',
+    lastActive: 'all'
+  });
+  
+  // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editFormData, setEditFormData] = useState({
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  
+  // Form states
+  const [editForm, setEditForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    role: 'CUSTOMER' as UserRole,
+    status: 'ACTIVE' as UserStatus
   });
-  const [editLoading, setEditLoading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteReason, setDeleteReason] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [showBulkActionsModal, setShowBulkActionsModal] = useState(false);
+  
+  const [modalReasons, setModalReasons] = useState({
+    reject: '',
+    suspend: '',
+    delete: '',
+    bulk: ''
+  });
+  
   const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | 'suspend' | 'delete' | ''>('');
-  const [bulkReason, setBulkReason] = useState('');
-  const [bulkLoading, setBulkLoading] = useState(false);
+  
+  // Loading states
+  const [actionLoading, setActionLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
 
+  // Fetch data on component mount
   useEffect(() => {
     if (authUser?.token) {
       fetchUsers();
@@ -47,509 +174,395 @@ export default function UserManagement() {
     }
   }, [authUser?.token]);
 
+  // Fetch users when filters or pagination changes
   useEffect(() => {
     if (authUser?.token) {
       fetchUsers();
     }
-  }, [page, limit, statusFilter, roleFilter, searchTerm]);
+  }, [page, limit, filters]);
 
-  const fetchStats = async () => {
-    if (!authUser?.token) return;
-    try {
-      const response = await fetch(`${API_URL}/api/admin/users/stats`, {
-        headers: {
-          'Authorization': `Bearer ${authUser.token}`,
-          'Content-Type': 'application/json'
-        }
+  // Debug: Log users when they change
+  useEffect(() => {
+    console.log('Users updated:', users);
+    if (users.length > 0) {
+      console.log('First user structure:', users[0]);
+      // Test modal with first user
+      console.log('Testing modal with user:', {
+        _id: users[0]._id,
+        firstName: users[0].firstName,
+        lastName: users[0].lastName,
+        email: users[0].email,
+        role: users[0].role,
+        status: users[0].status
       });
-      if (!response.ok) throw new Error('Failed to fetch stats');
-      const data = await response.json();
-      setStats(data);
-    } catch (error) {
-      setStats(null);
     }
-  };
+  }, [users]);
 
   const fetchUsers = async () => {
     try {
-      if (!authUser?.token) throw new Error('Authentication required');
       setLoading(true);
-      let url = `${API_URL}/api/admin/users?page=${page}&limit=${limit}`;
-      if (statusFilter !== 'all') url += `&status=${statusFilter}`;
-      if (roleFilter !== 'all') url += `&role=${roleFilter}`;
-      if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${authUser.token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const data = await response.json();
+      console.log('Fetching users with params:', { page, limit, filters });
+      
+      const params = {
+        page,
+        limit,
+        ...(filters.search && { search: filters.search }),
+        ...(filters.status !== 'all' && { status: filters.status }),
+        ...(filters.role !== 'all' && { role: filters.role }),
+        ...(filters.dateRange.start && { startDate: filters.dateRange.start }),
+        ...(filters.dateRange.end && { endDate: filters.dateRange.end }),
+        ...(filters.verified !== 'all' && { verified: filters.verified }),
+        ...(filters.lastActive !== 'all' && { lastActive: filters.lastActive })
+      };
+
+      console.log('Calling adminService.getAllUsers with params:', params);
+      const data = await adminService.getAllUsers(params);
+      console.log('Received data from adminService:', data);
+      
       setUsers(data.users);
       setTotalPages(data.pagination.pages);
+      setTotalUsers(data.pagination.total);
     } catch (error) {
-      setUsers([]);
-      setTotalPages(1);
+      console.error('Error in fetchUsers:', error);
       showToast('error', error instanceof Error ? error.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApproveUser = async (userId: string) => {
+  const fetchStats = async () => {
     try {
-      if (!authUser?.token) {
-        throw new Error('Authentication required');
+      const data = await adminService.getUserStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  // User actions
+  const handleUserAction = async (action: string, userId: string, reason?: string) => {
+    try {
+      setActionLoading(true);
+      
+      let result;
+      switch (action) {
+        case 'approve':
+          result = await adminService.approveUser(userId);
+          break;
+        case 'reject':
+          if (!reason) throw new Error('Rejection reason is required');
+          result = await adminService.rejectUser(userId, reason);
+          break;
+        case 'suspend':
+          result = await adminService.updateUserStatus(userId, 'SUSPENDED');
+          break;
+        case 'activate':
+          result = await adminService.updateUserStatus(userId, 'ACTIVE');
+          break;
+        case 'delete':
+          result = await adminService.deleteUser(userId);
+          break;
+        default:
+          throw new Error(`Unknown action: ${action}`);
       }
 
-      const response = await fetch(`${API_URL}/api/admin/approve-user/${userId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser.token}`
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error approving user');
-      }
-
-      showToast('success', data.message || 'User approved successfully');
+      showToast('success', `User ${action}ed successfully`);
       fetchUsers();
+      fetchStats();
     } catch (error) {
-      console.error('Error approving user:', error);
-      showToast('error', error instanceof Error ? error.message : 'Error approving user');
+      showToast('error', error instanceof Error ? error.message : `Failed to ${action} user`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleRejectUser = async (userId: string) => {
+  const handleBulkAction = async () => {
+    if (!bulkAction || selectedUsers.length === 0) return;
+    
     try {
-      if (!authUser?.token) {
-        throw new Error('Authentication required');
-      }
+      setActionLoading(true);
+      await adminService.bulkAction(bulkAction, selectedUsers, modalReasons.bulk);
 
-      if (!rejectionReason.trim()) {
-        showToast('error', 'Please provide a reason for rejection');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/api/admin/reject-user/${userId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser.token}`
-        },
-        body: JSON.stringify({ reason: rejectionReason }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Error rejecting user');
-      }
-
-      showToast('success', data.message || 'User rejected successfully');
-      setShowRejectionModal(false);
-      setRejectionReason('');
+      showToast('success', `${selectedUsers.length} users ${bulkAction}ed successfully`);
+      setSelectedUsers([]);
+      setShowBulkModal(false);
+      setBulkAction('');
+      setModalReasons({ ...modalReasons, bulk: '' });
       fetchUsers();
+      fetchStats();
     } catch (error) {
-      console.error('Error rejecting user:', error);
-      showToast('error', error instanceof Error ? error.message : 'Error rejecting user');
+      showToast('error', error instanceof Error ? error.message : `Failed to ${bulkAction} users`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleStatusChange = async (userId: string, newStatus: UserStatus) => {
-    try {
-      const response = await fetch(`${API_URL}/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser?.token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user status');
-      }
-
-      setUsers(users.map(user => 
-        user._id === userId ? { ...user, status: newStatus } : user
-      ));
-      toast.success('User status updated successfully');
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update user status');
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: UserRole) => {
-    try {
-      const response = await fetch(`${API_URL}/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser?.token}`
-        },
-        body: JSON.stringify({ role: newRole })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user role');
-      }
-
-      setUsers(users.map(user => 
-        user._id === userId ? { ...user, role: newRole } : user
-      ));
-      toast.success('User role updated successfully');
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update user role');
-    }
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber
-    });
-    setSelectedUser(user);
-    setShowEditModal(true);
-  };
-
-  const handleUpdateUser = async () => {
+  const handleUpdateUser = async (userData: any) => {
     if (!selectedUser) return;
     
     try {
-      setEditLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/users/${selectedUser._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser?.token}`
-        },
-        body: JSON.stringify(editFormData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user');
-      }
-
-      const updatedUserData = await response.json();
+      setActionLoading(true);
+      await adminService.updateUser(selectedUser._id, userData);
       
       // Update the user in the list
       setUsers(users.map(user => 
         user._id === selectedUser._id 
-          ? { ...user, ...editFormData }
+          ? { ...user, ...userData }
           : user
       ));
       
       // Update selected user if it's the same user
       if (selectedUser) {
-        setSelectedUser({ ...selectedUser, ...editFormData });
+        setSelectedUser({ ...selectedUser, ...userData });
       }
       
       setShowEditModal(false);
-      setEditFormData({ firstName: '', lastName: '', email: '', phoneNumber: '' });
       showToast('success', 'User updated successfully');
     } catch (error) {
-      console.error('Error updating user:', error);
       showToast('error', error instanceof Error ? error.message : 'Failed to update user');
     } finally {
-      setEditLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!deleteReason.trim()) {
-      showToast('error', 'Please provide a reason for deletion');
-      return;
-    }
-
-    try {
-      setDeleteLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser?.token}`
-        },
-        body: JSON.stringify({ reason: deleteReason })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
-      }
-
-      // Remove user from the list
-      setUsers(users.filter(user => user._id !== userId));
-      
-      // Clear selected user if it was the deleted user
-      if (selectedUser && selectedUser._id === userId) {
-        setSelectedUser(null);
-      }
-      
-      setShowDeleteModal(false);
-      setDeleteReason('');
-      showToast('success', 'User deleted successfully');
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to delete user');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handleBulkAction = async () => {
-    if (!bulkAction || selectedUserIds.length === 0) {
-      showToast('error', 'Please select an action and at least one user');
-      return;
-    }
-
-    if ((bulkAction === 'reject' || bulkAction === 'delete') && !bulkReason.trim()) {
-      showToast('error', 'Please provide a reason for this action');
-      return;
-    }
-
-    try {
-      setBulkLoading(true);
-      const response = await fetch(`${API_URL}/api/admin/users/bulk-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authUser?.token}`
-        },
-        body: JSON.stringify({
-          userIds: selectedUserIds,
-          action: bulkAction,
-          reason: bulkReason
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to perform bulk action');
-      }
-
-      const result = await response.json();
-      
-      // Refresh the user list to get updated data
-      await fetchUsers();
-      
-      // Clear selections
-      setSelectedUserIds([]);
-      setShowBulkActionsModal(false);
-      setBulkAction('');
-      setBulkReason('');
-      
-      showToast('success', result.message || 'Bulk action completed successfully');
-    } catch (error) {
-      console.error('Error performing bulk action:', error);
-      showToast('error', error instanceof Error ? error.message : 'Failed to perform bulk action');
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
-  const handleExportUsers = async (format: 'csv' | 'json' = 'csv') => {
+  const handleExportUsers = async () => {
     try {
       setExportLoading(true);
+      const blob = await adminService.exportUsers('csv');
       
-      // Get all users for export (not paginated)
-      const response = await fetch(`${API_URL}/api/admin/users/export?format=${format}`, {
-        headers: {
-          'Authorization': `Bearer ${authUser?.token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to export users');
-      }
-
-      if (format === 'csv') {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        const data = await response.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `users-export-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-
-      showToast('success', `Users exported successfully as ${format.toUpperCase()}`);
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      showToast('success', 'Users exported successfully');
     } catch (error) {
-      console.error('Error exporting users:', error);
       showToast('error', error instanceof Error ? error.message : 'Failed to export users');
     } finally {
       setExportLoading(false);
     }
   };
 
-  const handleSelectUser = (userId: string) => {
-    setSelectedUserIds(ids => ids.includes(userId) ? ids.filter(id => id !== userId) : [...ids, userId]);
-  };
-
-  const handleSelectAll = () => {
-    if (selectedUserIds.length === filteredUsers.length) {
-      setSelectedUserIds([]);
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUsers(filteredUsers.map(user => user._id));
     } else {
-      setSelectedUserIds(filteredUsers.map(u => u._id));
+      setSelectedUsers([]);
     }
   };
 
-  const handlePrevPage = () => setPage(p => Math.max(1, p - 1));
-  const handleNextPage = () => setPage(p => Math.min(totalPages, p + 1));
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    return matchesSearch && matchesStatus && matchesRole;
-  });
-
-  const renderUserDetails = (user: User) => {
-    return (
-      <div className="space-y-6">
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">User Details</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.firstName} {user.lastName}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.email}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">{user.phoneNumber}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Role</p>
-              <select
-                value={user.role}
-                onChange={(e) => handleRoleChange(user._id, e.target.value as UserRole)}
-                className="mt-1 text-sm text-gray-900 dark:text-white capitalize bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="CUSTOMER">Customer</option>
-                <option value="DRIVER">Driver</option>
-                <option value="VENDOR">Vendor</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
-              <div className="flex items-center space-x-2">
-                <select
-                  value={user.status}
-                  onChange={(e) => handleStatusChange(user._id, e.target.value as UserStatus)}
-                  className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
-                    user.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    user.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                    user.status === 'SUSPENDED' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  }`}
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="SUSPENDED">Suspended</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Registration Date</p>
-              <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                {new Date(user.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-
-          {user.status === 'PENDING' && (
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setSelectedUser(user);
-                  setShowRejectionModal(true);
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:hover:bg-gray-600"
-              >
-                Reject
-              </button>
-              <button
-                onClick={() => handleApproveUser(user._id)}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Approve
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const handleSelectUser = (userId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedUsers([...selectedUsers, userId]);
+    } else {
+      setSelectedUsers(selectedUsers.filter(id => id !== userId));
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
+  // Helper functions for status and role colors
+  const getStatusColor = (status: UserStatus) => {
+    switch (status) {
+      case 'ACTIVE': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'SUSPENDED': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'REJECTED': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h2>
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
+  const getRoleColor = (role: UserRole) => {
+    switch (role) {
+      case 'ADMIN': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'VENDOR': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'DRIVER': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+      case 'CUSTOMER': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  // Filtered users
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+        const email = user.email.toLowerCase();
+        const phone = user.phoneNumber?.toLowerCase() || '';
+        
+        if (!fullName.includes(searchTerm) && !email.includes(searchTerm) && !phone.includes(searchTerm)) {
+          return false;
+        }
+      }
+      
+      if (filters.status !== 'all' && user.status.toLowerCase() !== filters.status) {
+        return false;
+      }
+      
+      if (filters.role !== 'all' && user.role.toLowerCase() !== filters.role) {
+        return false;
+      }
+      
+      return true;
+    });
+  }, [users, filters]);
+
+  // Render functions
+  const renderStatsCards = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              {stats?.totalUsers || 0}
+            </p>
+          </div>
+          <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+            <FiUsersIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center text-sm">
+          <FiTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+          <span className="text-green-600 dark:text-green-400">
+            +{stats?.userGrowthRate || 0}% this month
+          </span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              {stats?.activeUsers || 0}
+            </p>
+          </div>
+          <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+            <FiUserCheckIcon className="h-6 w-6 text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center text-sm">
+          <FiCheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+          <span className="text-green-600 dark:text-green-400">
+            {((stats?.activeUsers || 0) / (stats?.totalUsers || 1) * 100).toFixed(1)}% active rate
+          </span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Approval</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              {stats?.pendingUsers || 0}
+            </p>
+          </div>
+          <div className="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+            <FiClockIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center text-sm">
+          <FiAlertTriangleIcon className="h-4 w-4 text-yellow-500 mr-1" />
+          <span className="text-yellow-600 dark:text-yellow-400">
+            Requires attention
+          </span>
+        </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">New This Week</p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+              {stats?.newUsersThisWeek || 0}
+            </p>
+          </div>
+          <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+            <FiUserPlusIcon className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center text-sm">
+          <FiTrendingUpIcon className="h-4 w-4 text-purple-500 mr-1" />
+          <span className="text-purple-600 dark:text-purple-400">
+            Growing steadily
+          </span>
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  const renderFilters = () => (
+    <motion.div
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: showFilters ? 'auto' : 0, opacity: showFilters ? 1 : 0 }}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6 overflow-hidden"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Search
+          </label>
+          <div className="relative">
+            <FiSearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={filters.search}
+              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Status
+          </label>
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as UserStatus | 'all')}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
           >
             <option value="all">All Status</option>
             <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="SUSPENDED">Suspended</option>
             <option value="PENDING">Pending</option>
+            <option value="SUSPENDED">Suspended</option>
             <option value="REJECTED">Rejected</option>
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Role
+          </label>
           <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            value={filters.role}
+            onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
           >
             <option value="all">All Roles</option>
             <option value="CUSTOMER">Customer</option>
@@ -557,510 +570,530 @@ export default function UserManagement() {
             <option value="VENDOR">Vendor</option>
             <option value="ADMIN">Admin</option>
           </select>
-          <div className="flex gap-2">
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Last Active
+          </label>
+          <select
+            value={filters.lastActive}
+            onChange={(e) => setFilters({ ...filters, lastActive: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mt-4 flex justify-end space-x-3">
+        <button
+          onClick={() => setFilters({
+            search: '',
+            status: 'all',
+            role: 'all',
+            dateRange: { start: '', end: '' },
+            verified: 'all',
+            lastActive: 'all'
+          })}
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+        >
+          Clear Filters
+        </button>
+        <button
+          onClick={() => setShowFilters(false)}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Apply Filters
+        </button>
+      </div>
+    </motion.div>
+  );
+
+  const renderUserTable = () => (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Users ({totalUsers})
+          </h3>
+          <div className="flex items-center space-x-3">
             <button
-              onClick={() => handleExportUsers('csv')}
-              disabled={exportLoading}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              {exportLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )}
-              Export CSV
+              <FiFilterIcon className="h-4 w-4 mr-2" />
+              Filters
             </button>
             <button
-              onClick={() => handleExportUsers('json')}
+              onClick={handleExportUsers}
               disabled={exportLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
             >
-              {exportLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )}
-              Export JSON
+              <FiDownloadIcon className="h-4 w-4 mr-2" />
+              {exportLoading ? 'Exporting...' : 'Export'}
+            </button>
+            <button
+              onClick={() => setShowCreateUser(true)}
+              className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FiUserPlusIcon className="h-4 w-4 mr-2" />
+              Add User
             </button>
           </div>
         </div>
       </div>
 
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow flex flex-col items-center">
-            <span className="text-lg font-bold">{stats.totalUsers}</span>
-            <span className="text-xs text-gray-500">Total Users</span>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow flex flex-col items-center">
-            <span className="text-lg font-bold">{stats.activeUsers}</span>
-            <span className="text-xs text-gray-500">Active</span>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow flex flex-col items-center">
-            <span className="text-lg font-bold">{stats.pendingUsers}</span>
-            <span className="text-xs text-gray-500">Pending</span>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow flex flex-col items-center">
-            <span className="text-lg font-bold">{stats.suspendedUsers}</span>
-            <span className="text-xs text-gray-500">Suspended</span>
-          </div>
-        </div>
-      )}
-
-      {selectedUserIds.length > 0 && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {selectedUserIds.length} user{selectedUserIds.length !== 1 ? 's' : ''} selected
-              </span>
-              <button
-                onClick={() => setSelectedUserIds([])}
-                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-sm underline"
-              >
-                Clear selection
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
+      {selectedUsers.length > 0 && (
+        <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected
+            </span>
+            <div className="flex items-center space-x-2">
               <button
                 onClick={() => {
                   setBulkAction('approve');
-                  setShowBulkActionsModal(true);
+                  setShowBulkModal(true);
                 }}
-                className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
               >
-                Approve Selected
-              </button>
-              <button
-                onClick={() => {
-                  setBulkAction('reject');
-                  setShowBulkActionsModal(true);
-                }}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors"
-              >
-                Reject Selected
+                Approve
               </button>
               <button
                 onClick={() => {
                   setBulkAction('suspend');
-                  setShowBulkActionsModal(true);
+                  setShowBulkModal(true);
                 }}
-                className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 transition-colors"
               >
-                Suspend Selected
+                Suspend
               </button>
               <button
                 onClick={() => {
                   setBulkAction('delete');
-                  setShowBulkActionsModal(true);
+                  setShowBulkModal(true);
                 }}
-                className="px-3 py-1.5 bg-red-800 hover:bg-red-900 text-white text-sm rounded-md transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
               >
-                Delete Selected
+                Delete
+              </button>
+              <button
+                onClick={() => setSelectedUsers([])}
+                className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 transition-colors"
+              >
+                Clear
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredUsers.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                No users found
-              </div>
-            ) : (
-              <>
-                {/* Select All Header */}
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0}
-                      onChange={handleSelectAll}
-                      className="mr-2"
-                    />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Select All ({filteredUsers.length})
-                    </span>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th className="px-6 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Joined
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Last Active
+              </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-500 dark:text-gray-400">Loading users...</span>
                   </div>
-                  {selectedUserIds.length > 0 && (
-                    <span className="text-xs text-blue-600 dark:text-blue-400">
-                      {selectedUserIds.length} selected
-                    </span>
-                  )}
-                </div>
-                
-                {filteredUsers.map(user => (
-                  <motion.div
-                    key={user._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex items-center"
-                    onClick={() => setSelectedUser(user)}
-                  >
+                </td>
+              </tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                  No users found
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map((user) => (
+                <motion.tr
+                  key={user._id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <input
                       type="checkbox"
-                      checked={selectedUserIds.includes(user._id)}
-                      onChange={e => { e.stopPropagation(); handleSelectUser(user._id); }}
-                      className="mr-2"
+                      checked={selectedUsers.includes(user._id)}
+                      onChange={(e) => handleSelectUser(user._id, e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user.firstName} {user.lastName}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <select
-                            value={user.status}
-                            onChange={(e) => handleStatusChange(user._id, e.target.value as UserStatus)}
-                            className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
-                              user.status === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                              user.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                              user.status === 'SUSPENDED' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                              'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            }`}
-                          >
-                            <option value="ACTIVE">Active</option>
-                            <option value="PENDING">Pending</option>
-                            <option value="SUSPENDED">Suspended</option>
-                            <option value="REJECTED">Rejected</option>
-                          </select>
-                          <select
-                            value={user.role}
-                            onChange={(e) => handleRoleChange(user._id, e.target.value as UserRole)}
-                            className="text-xs font-medium px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-                          >
-                            <option value="CUSTOMER">Customer</option>
-                            <option value="DRIVER">Driver</option>
-                            <option value="VENDOR">Vendor</option>
-                            <option value="ADMIN">Admin</option>
-                          </select>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {user.email}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {user.phoneNumber}
                         </div>
                       </div>
                     </div>
-                    <button
-                      className="ml-2 text-blue-500 hover:underline"
-                      onClick={e => { e.stopPropagation(); handleEditUser(user); }}
-                    >Edit</button>
-                    <button
-                      className="ml-2 text-red-500 hover:underline"
-                      onClick={e => { 
-                        e.stopPropagation(); 
-                        setSelectedUser(user);
-                        setShowDeleteModal(true);
-                      }}
-                    >Delete</button>
-                  </motion.div>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="lg:col-span-2">
-          {selectedUser ? (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              {renderUserDetails(selectedUser)}
-            </motion.div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 text-center text-gray-500 dark:text-gray-400">
-              Select a user to view details
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center mt-4">
-        <button onClick={handlePrevPage} disabled={page === 1} className="px-3 py-1 rounded bg-gray-200">Prev</button>
-        <span>Page {page} of {totalPages}</span>
-        <button onClick={handleNextPage} disabled={page === totalPages} className="px-3 py-1 rounded bg-gray-200">Next</button>
-      </div>
-
-      {/* Edit User Modal */}
-      {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Edit User: {selectedUser.firstName} {selectedUser.lastName}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.firstName}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  value={editFormData.lastName}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={editFormData.phoneNumber}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  required
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditFormData({ firstName: '', lastName: '', email: '', phoneNumber: '' });
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                disabled={editLoading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateUser}
-                disabled={editLoading || !editFormData.firstName || !editFormData.lastName || !editFormData.email || !editFormData.phoneNumber}
-                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {editLoading ? 'Updating...' : 'Update User'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Delete User Modal */}
-      {showDeleteModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Delete User: {selectedUser.firstName} {selectedUser.lastName}
-            </h3>
-            <div className="space-y-4">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                      Warning: This action cannot be undone
-                    </h3>
-                    <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-                      <p>This will permanently delete the user account and all associated data.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Reason for Deletion
-                </label>
-                <textarea
-                  value={deleteReason}
-                  onChange={(e) => setDeleteReason(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  rows={4}
-                  placeholder="Enter reason for deletion..."
-                  required
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteReason('');
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                disabled={deleteLoading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDeleteUser(selectedUser._id)}
-                disabled={deleteLoading || !deleteReason.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deleteLoading ? 'Deleting...' : 'Delete User'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Rejection Modal */}
-      {showRejectionModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Reject User
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Reason for Rejection
-                </label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  rows={4}
-                  placeholder="Enter reason for rejection..."
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setRejectionReason('');
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleRejectUser(selectedUser._id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Reject User
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Bulk Actions Modal */}
-      {showBulkActionsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
-          >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Bulk {bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)} Users
-            </h3>
-            <div className="space-y-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      Confirm Bulk Action
-                    </h3>
-                    <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                      <p>This action will be applied to {selectedUserIds.length} selected user{selectedUserIds.length !== 1 ? 's' : ''}.</p>
-                      {bulkAction === 'delete' && (
-                        <p className="mt-1 font-medium">This action cannot be undone!</p>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status)}`}>
+                      {user.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(user.updatedAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => {
+                          console.log('View button clicked for user:', user);
+                          setSelectedUser(user);
+                          setShowUserDetails(true);
+                          console.log('showUserDetails set to true');
+                        }}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                        title="View Details"
+                      >
+                        <FiEyeIcon className="h-4 w-4" />
+                      </button>
+                      
+                      {/* Status Actions */}
+                      {user.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleUserAction('approve', user._id)}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                            title="Approve User"
+                            disabled={actionLoading}
+                          >
+                            <FiCheckCircleIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowRejectModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                            title="Reject User"
+                            disabled={actionLoading}
+                          >
+                            <FiXCircleIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      
+                      {user.status === 'ACTIVE' && (
+                        <button
+                          onClick={() => handleUserAction('suspend', user._id)}
+                          className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300 transition-colors"
+                          title="Suspend User"
+                          disabled={actionLoading}
+                        >
+                          <FiAlertTriangleIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      {user.status === 'SUSPENDED' && (
+                        <button
+                          onClick={() => handleUserAction('activate', user._id)}
+                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                          title="Activate User"
+                          disabled={actionLoading}
+                        >
+                          <FiCheckCircleIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => {
+                          console.log('Edit button clicked for user:', user);
+                          setEditForm({
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            email: user.email,
+                            phoneNumber: user.phoneNumber,
+                            role: user.role,
+                            status: user.status
+                          });
+                          setSelectedUser(user);
+                          setShowEditModal(true);
+                          console.log('showEditModal set to true');
+                        }}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors"
+                        title="Edit User"
+                      >
+                        <FiEditIcon className="h-4 w-4" />
+                      </button>
+                      
+                      {user.role !== 'ADMIN' && (
+                        <button
+                          onClick={() => {
+                            console.log('Delete button clicked for user:', user);
+                            setSelectedUser(user);
+                            setShowDeleteModal(true);
+                            console.log('showDeleteModal set to true');
+                          }}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                          title="Delete User"
+                        >
+                          <FiTrash2Icon className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
+                  </td>
+                </motion.tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalUsers)} of {totalUsers} results
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <button
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Manage users, roles, and permissions across the platform
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowAnalytics(true)}
+            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiBarChartIcon className="h-4 w-4 mr-2" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setShowUserActivity(true)}
+            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiActivityIcon className="h-4 w-4 mr-2" />
+            Activity
+          </button>
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+          >
+            <FiRefreshCwIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {renderStatsCards()}
+
+      {/* Filters */}
+      {renderFilters()}
+
+      {/* User Table */}
+      {renderUserTable()}
+
+      {/* Modals */}
+      <UserDetailsModal
+        isOpen={showUserDetails}
+        onClose={() => {
+          console.log('Closing UserDetailsModal');
+          setShowUserDetails(false);
+        }}
+        user={selectedUser}
+      />
+
+      <EditUserModal
+        isOpen={showEditModal}
+        onClose={() => {
+          console.log('Closing EditUserModal');
+          setShowEditModal(false);
+        }}
+        user={selectedUser}
+        onSave={handleUpdateUser}
+        loading={actionLoading}
+      />
+
+      <DeleteUserModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          console.log('Closing DeleteUserModal');
+          setShowDeleteModal(false);
+        }}
+        user={selectedUser}
+        onConfirm={(reason) => handleUserAction('delete', selectedUser?._id || '', reason)}
+        loading={actionLoading}
+      />
+
+      {/* Reject User Modal */}
+      <div className={`fixed inset-0 z-50 overflow-y-auto ${showRejectModal ? 'block' : 'hidden'}`}
+        onClick={() => setShowRejectModal(false)}>
+        <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+          <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" />
+          <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+            onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Reject User</h3>
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <FiXIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-4">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <FiXCircleIcon className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Are you sure you want to reject this user?
+                    </h3>
                   </div>
                 </div>
-              </div>
-              
-              {(bulkAction === 'reject' || bulkAction === 'delete') && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Reason for {bulkAction === 'reject' ? 'Rejection' : 'Deletion'}
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Reason <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    value={bulkReason}
-                    onChange={(e) => setBulkReason(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    rows={4}
-                    placeholder={`Enter reason for ${bulkAction}...`}
+                    value={modalReasons.reject}
+                    onChange={(e) => setModalReasons({ ...modalReasons, reject: e.target.value })}
+                    placeholder="Please provide a reason for rejecting this user..."
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    rows={3}
                     required
                   />
                 </div>
-              )}
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowRejectModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (modalReasons.reject.trim()) {
+                        handleUserAction('reject', selectedUser?._id || '', modalReasons.reject);
+                        setShowRejectModal(false);
+                        setModalReasons({ ...modalReasons, reject: '' });
+                      }
+                    }}
+                    disabled={!modalReasons.reject.trim() || actionLoading}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading ? 'Rejecting...' : 'Reject User'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowBulkActionsModal(false);
-                  setBulkAction('');
-                  setBulkReason('');
-                }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                disabled={bulkLoading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBulkAction}
-                disabled={bulkLoading || ((bulkAction === 'reject' || bulkAction === 'delete') && !bulkReason.trim())}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                  bulkAction === 'approve' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' :
-                  bulkAction === 'reject' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' :
-                  bulkAction === 'suspend' ? 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-500' :
-                  'bg-red-800 hover:bg-red-900 focus:ring-red-500'
-                }`}
-              >
-                {bulkLoading ? 'Processing...' : `${bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)} Selected`}
-              </button>
-            </div>
-          </motion.div>
+          </div>
         </div>
-      )}
+      </div>
+
+      <BulkActionModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        action={bulkAction}
+        selectedCount={selectedUsers.length}
+        onConfirm={handleBulkAction}
+        loading={actionLoading}
+      />
+
     </div>
   );
 } 

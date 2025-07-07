@@ -54,4 +54,21 @@ export const sendDeliveryNotificationSMS = async (phoneNumber: string, deliveryT
     console.error('SMS sending error:', error);
     throw new Error('Failed to send delivery notification SMS');
   }
+};
+
+// General SMS sending function
+export const sendSMS = async (phoneNumber: string, message: string): Promise<void> => {
+  try {
+    await termii.post('/sms/send', {
+      to: phoneNumber,
+      from: process.env.TERMII_SENDER_ID || 'FuelGo',
+      sms: message,
+      type: 'plain',
+      channel: 'generic',
+    });
+    console.log(`SMS sent successfully to ${phoneNumber}`);
+  } catch (error) {
+    console.error('SMS sending error:', error);
+    throw new Error('Failed to send SMS');
+  }
 }; 

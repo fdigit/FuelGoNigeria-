@@ -1,17 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '../../../contexts/ToastContext';
-
-interface NotificationTemplate {
-  id: string;
-  name: string;
-  title: string;
-  body: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  targetAudience: ('all' | 'customers' | 'vendors' | 'drivers')[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { NotificationService, NotificationTemplate } from '../../../services/notification.service';
 
 interface Notification {
   id: string;
@@ -43,65 +33,11 @@ export default function PushNotifications() {
     search: '',
   });
 
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const { showToast } = useToast();
-
-  const [templates, setTemplates] = useState<NotificationTemplate[]>([
-    {
-      id: 'TMP001',
-      name: 'Order Status Update',
-      title: 'Order Status Update',
-      body: 'Your order #{orderId} has been {status}',
-      type: 'info',
-      targetAudience: ['customers'],
-      createdAt: '2024-02-22T10:00:00Z',
-      updatedAt: '2024-02-22T10:00:00Z',
-    },
-    {
-      id: 'TMP002',
-      name: 'Payment Received',
-      title: 'Payment Received',
-      body: 'Payment of ₦{amount} has been received for order #{orderId}',
-      type: 'success',
-      targetAudience: ['vendors'],
-      createdAt: '2024-02-22T11:00:00Z',
-      updatedAt: '2024-02-22T11:00:00Z',
-    },
-  ]);
-
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 'NOT001',
-      templateId: 'TMP001',
-      title: 'Order Status Update',
-      body: 'Your order #ORD001 has been delivered',
-      type: 'info',
-      targetAudience: ['customers'],
-      status: 'sent',
-      sentAt: '2024-02-22T10:05:00Z',
-      recipients: {
-        total: 1,
-        sent: 1,
-        failed: 0,
-      },
-      createdAt: '2024-02-22T10:00:00Z',
-    },
-    {
-      id: 'NOT002',
-      templateId: 'TMP002',
-      title: 'Payment Received',
-      body: 'Payment of ₦50,000 has been received for order #ORD001',
-      type: 'success',
-      targetAudience: ['vendors'],
-      status: 'scheduled',
-      scheduledFor: '2024-02-23T10:00:00Z',
-      recipients: {
-        total: 1,
-        sent: 0,
-        failed: 0,
-      },
-      createdAt: '2024-02-22T11:00:00Z',
-    },
-  ]);
 
   const [newNotification, setNewNotification] = useState({
     title: '',
@@ -111,60 +47,116 @@ export default function PushNotifications() {
     scheduledFor: '',
   });
 
+  useEffect(() => {
+    if (activeTab === 'templates') {
+      loadTemplates();
+    }
+  }, [activeTab]);
+
+  const loadTemplates = async () => {
+    try {
+      setLoading(true);
+      const templatesData = await NotificationService.getTemplates();
+      setTemplates(templatesData);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      showToast('error', 'Failed to load notification templates');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSendNotification = () => {
-    const notification: Notification = {
-      id: `NOT${notifications.length + 1}`,
-      templateId: '',
-      title: newNotification.title,
-      body: newNotification.body,
-      type: newNotification.type,
-      targetAudience: newNotification.targetAudience,
-      status: newNotification.scheduledFor ? 'scheduled' : 'sending',
-      scheduledFor: newNotification.scheduledFor,
-      recipients: {
-        total: 0,
-        sent: 0,
-        failed: 0,
-      },
-      createdAt: new Date().toISOString(),
-    };
+  const handleSendNotification = async () => {
+    try {
+      if (!newNotification.title || !newNotification.body) {
+        showToast('error', 'Please fill in all required fields');
+        return;
+      }
 
-    setNotifications([...notifications, notification]);
-    setNewNotification({
-      title: '',
-      body: '',
-      type: 'info',
-      targetAudience: [],
-      scheduledFor: '',
-    });
-    showToast('success', 'Notification sent successfully');
+      if (newNotification.targetAudience.length === 0) {
+        showToast('error', 'Please select at least one target audience');
+        return;
+      }
+
+      // Convert target audience to roles
+      const roles = newNotification.targetAudience.map(audience => {
+        switch (audience) {
+          case 'customers': return 'CUSTOMER';
+          case 'vendors': return 'VENDOR';
+          case 'drivers': return 'DRIVER';
+          default: return 'CUSTOMER';
+        }
+      });
+
+      await NotificationService.sendNotificationByRole(roles, {
+        type: 'SYSTEM',
+        title: newNotification.title,
+        message: newNotification.body,
+        priority: newNotification.type === 'error' ? 'HIGH' : 'MEDIUM'
+      });
+
+      setNewNotification({
+        title: '',
+        body: '',
+        type: 'info',
+        targetAudience: [],
+        scheduledFor: '',
+      });
+      showToast('success', 'Notification sent successfully');
+    } catch (error) {
+      console.error('Error sending notification:', error);
+      showToast('error', 'Failed to send notification');
+    }
   };
 
-  const handleSaveTemplate = () => {
-    const template: NotificationTemplate = {
-      id: `TMP${templates.length + 1}`,
-      name: newNotification.title,
-      title: newNotification.title,
-      body: newNotification.body,
-      type: newNotification.type,
-      targetAudience: newNotification.targetAudience,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  const handleSaveTemplate = async () => {
+    try {
+      if (!newNotification.title || !newNotification.body) {
+        showToast('error', 'Please fill in all required fields');
+        return;
+      }
 
-    setTemplates([...templates, template]);
-    setNewNotification({
-      title: '',
-      body: '',
-      type: 'info',
-      targetAudience: [],
-      scheduledFor: '',
-    });
-    showToast('success', 'Template saved successfully');
+      if (newNotification.targetAudience.length === 0) {
+        showToast('error', 'Please select at least one target audience');
+        return;
+      }
+
+      // Convert target audience to roles
+      const roles = newNotification.targetAudience.map(audience => {
+        switch (audience) {
+          case 'customers': return 'CUSTOMER';
+          case 'vendors': return 'VENDOR';
+          case 'drivers': return 'DRIVER';
+          default: return 'CUSTOMER';
+        }
+      });
+
+      await NotificationService.createTemplate({
+        name: newNotification.title,
+        title: newNotification.title,
+        message: newNotification.body,
+        type: 'SYSTEM',
+        priority: newNotification.type === 'error' ? 'HIGH' : 'MEDIUM',
+        targetRoles: roles
+      });
+
+      setNewNotification({
+        title: '',
+        body: '',
+        type: 'info',
+        targetAudience: [],
+        scheduledFor: '',
+      });
+      showToast('success', 'Template saved successfully');
+      loadTemplates(); // Reload templates
+    } catch (error) {
+      console.error('Error saving template:', error);
+      showToast('error', 'Failed to save template');
+    }
   };
 
   const handleCancelScheduled = (notificationId: string) => {
@@ -183,61 +175,49 @@ export default function PushNotifications() {
   };
 
   const filteredNotifications = notifications.filter((notif) => {
-    return (
-      (!filters.status || notif.status === filters.status) &&
-      (!filters.type || notif.type === filters.type) &&
-      (!filters.audience ||
-        notif.targetAudience.includes(filters.audience as any)) &&
-      (!filters.search ||
-        notif.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-        notif.body.toLowerCase().includes(filters.search.toLowerCase()))
-    );
+    if (filters.status && notif.status !== filters.status) return false;
+    if (filters.type && notif.type !== filters.type) return false;
+    if (filters.audience && !notif.targetAudience.includes(filters.audience as any)) return false;
+    if (filters.search && !notif.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    return true;
   });
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Push Notifications
-        </h2>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Push Notifications</h2>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage and send notifications to users
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('compose')}
-            className={`${
-              activeTab === 'compose'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Compose
-          </button>
-          <button
-            onClick={() => setActiveTab('templates')}
-            className={`${
-              activeTab === 'templates'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            Templates
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`${
-              activeTab === 'history'
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-          >
-            History
-          </button>
+          {[
+            { id: 'compose', label: 'Compose' },
+            { id: 'templates', label: 'Templates' },
+            { id: 'history', label: 'History' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </nav>
       </div>
 
+      {/* Tab Content */}
       {activeTab === 'compose' ? (
         <div className="space-y-6">
           {/* Compose Form */}
@@ -296,24 +276,35 @@ export default function PushNotifications() {
                   Target Audience
                 </label>
                 <div className="mt-2 space-y-2">
-                  {(['all', 'customers', 'vendors', 'drivers'] as const).map((audience) => (
-                    <label key={audience} className="inline-flex items-center mr-4">
+                  {[
+                    { value: 'all', label: 'All Users' },
+                    { value: 'customers', label: 'Customers' },
+                    { value: 'vendors', label: 'Vendors' },
+                    { value: 'drivers', label: 'Drivers' },
+                  ].map((audience) => (
+                    <label key={audience.value} className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={newNotification.targetAudience.includes(audience)}
+                        checked={newNotification.targetAudience.includes(audience.value as any)}
                         onChange={(e) => {
-                          const newAudience = e.target.checked
-                            ? [...newNotification.targetAudience, audience]
-                            : newNotification.targetAudience.filter((a) => a !== audience);
-                          setNewNotification({
-                            ...newNotification,
-                            targetAudience: newAudience,
-                          });
+                          if (e.target.checked) {
+                            setNewNotification({
+                              ...newNotification,
+                              targetAudience: [...newNotification.targetAudience, audience.value as any],
+                            });
+                          } else {
+                            setNewNotification({
+                              ...newNotification,
+                              targetAudience: newNotification.targetAudience.filter(
+                                (a) => a !== audience.value
+                              ),
+                            });
+                          }
                         }}
-                        className="rounded border-gray-300 text-primary-600 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700"
+                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
                       <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                        {audience.charAt(0).toUpperCase() + audience.slice(1)}
+                        {audience.label}
                       </span>
                     </label>
                   ))}
@@ -358,23 +349,25 @@ export default function PushNotifications() {
         </div>
       ) : activeTab === 'templates' ? (
         <div className="space-y-6">
-          {/* Templates */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          {/* Templates List */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Notification Templates
+              </h3>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Name
+                      Template
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Target Audience
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Last Updated
+                      Target Roles
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Actions
@@ -382,77 +375,65 @@ export default function PushNotifications() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {templates.map((template) => (
-                    <tr key={template.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {template.name}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {template.body}
-                        </div>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            template.type === 'success'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : template.type === 'warning'
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                              : template.type === 'error'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          }`}
-                        >
-                          {template.type}
-                        </span>
+                    </tr>
+                  ) : templates.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No templates found
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-1">
-                          {template.targetAudience.map((audience) => (
-                            <span
-                              key={audience}
-                              className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                            >
-                              {audience}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(template.updatedAt).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
+                    </tr>
+                  ) : (
+                    templates.map((template) => (
+                      <tr key={template.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {template.name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {template.message}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              template.priority === 'HIGH'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            }`}
+                          >
+                            {template.priority}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-wrap gap-1">
+                            {template.targetRoles.map((role) => (
+                              <span
+                                key={role}
+                                className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => setSelectedTemplate(template)}
                             className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
                           >
-                            View
+                            View Details
                           </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              setNewNotification({
-                                title: template.title,
-                                body: template.body,
-                                type: template.type,
-                                targetAudience: template.targetAudience,
-                                scheduledFor: '',
-                              });
-                              setActiveTab('compose');
-                            }}
-                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            Use
-                          </motion.button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -528,13 +509,18 @@ export default function PushNotifications() {
           </div>
 
           {/* Notification History */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Notification History
+              </h3>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Title
+                      Notification
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Type
@@ -549,7 +535,7 @@ export default function PushNotifications() {
                       Recipients
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Created
+                      Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Actions
@@ -557,92 +543,100 @@ export default function PushNotifications() {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredNotifications.map((notif) => (
-                    <tr key={notif.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {notif.title}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {notif.body}
-                        </div>
+                  {filteredNotifications.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        No notifications found
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            notif.type === 'success'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : notif.type === 'warning'
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                              : notif.type === 'error'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          }`}
-                        >
-                          {notif.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-1">
-                          {notif.targetAudience.map((audience) => (
-                            <span
-                              key={audience}
-                              className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                            >
-                              {audience}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            notif.status === 'sent'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : notif.status === 'failed'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                              : notif.status === 'sending'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : notif.status === 'scheduled'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          {notif.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <div>Total: {notif.recipients.total}</div>
-                        <div>Sent: {notif.recipients.sent}</div>
-                        <div>Failed: {notif.recipients.failed}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(notif.createdAt).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => setSelectedNotification(notif)}
-                            className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                    </tr>
+                  ) : (
+                    filteredNotifications.map((notif) => (
+                      <tr key={notif.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {notif.title}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {notif.body}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              notif.type === 'success'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : notif.type === 'warning'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                : notif.type === 'error'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            }`}
                           >
-                            View Details
-                          </motion.button>
-                          {notif.status === 'scheduled' && (
+                            {notif.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-wrap gap-1">
+                            {notif.targetAudience.map((audience) => (
+                              <span
+                                key={audience}
+                                className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                              >
+                                {audience}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              notif.status === 'sent'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : notif.status === 'failed'
+                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                : notif.status === 'sending'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : notif.status === 'scheduled'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            {notif.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <div>Total: {notif.recipients.total}</div>
+                          <div>Sent: {notif.recipients.sent}</div>
+                          <div>Failed: {notif.recipients.failed}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(notif.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
                             <motion.button
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={() => handleCancelScheduled(notif.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              onClick={() => setSelectedNotification(notif)}
+                              className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
                             >
-                              Cancel
+                              View Details
                             </motion.button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {notif.status === 'scheduled' && (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleCancelScheduled(notif.id)}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              >
+                                Cancel
+                              </motion.button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -652,61 +646,63 @@ export default function PushNotifications() {
 
       {/* View Template Details Modal */}
       {selectedTemplate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Template Details - {selectedTemplate.name}
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Template Details
               </h3>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedTemplate(null)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                ✕
-              </motion.button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Template Information
-                </h4>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  Title: {selectedTemplate.title}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Body: {selectedTemplate.body}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Type: {selectedTemplate.type}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Target Audience
-                </h4>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedTemplate.targetAudience.map((audience) => (
-                    <span
-                      key={audience}
-                      className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                    >
-                      {audience}
-                    </span>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Template Information
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    Title: {selectedTemplate.title}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Message: {selectedTemplate.message}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Priority: {selectedTemplate.priority}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Target Roles
+                  </h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedTemplate.targetRoles.map((role) => (
+                      <span
+                        key={role}
+                        className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                      >
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Timestamps
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    Created: {new Date(selectedTemplate.createdAt).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Last Updated: {new Date(selectedTemplate.updatedAt).toLocaleString()}
+                  </p>
                 </div>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Timestamps
-                </h4>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  Created: {new Date(selectedTemplate.createdAt).toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Last Updated: {new Date(selectedTemplate.updatedAt).toLocaleString()}
-                </p>
+              <div className="mt-6 flex justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedTemplate(null)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
+                >
+                  Close
+                </motion.button>
               </div>
             </div>
           </div>
@@ -715,85 +711,87 @@ export default function PushNotifications() {
 
       {/* View Notification Details Modal */}
       {selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Notification Details - {selectedNotification.id}
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-gray-800">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Notification Details
               </h3>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedNotification(null)}
-                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-              >
-                ✕
-              </motion.button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Notification Information
-                </h4>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  Title: {selectedNotification.title}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Body: {selectedNotification.body}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Type: {selectedNotification.type}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Status: {selectedNotification.status}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Target Audience
-                </h4>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedNotification.targetAudience.map((audience) => (
-                    <span
-                      key={audience}
-                      className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                    >
-                      {audience}
-                    </span>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Notification Information
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    Title: {selectedNotification.title}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Message: {selectedNotification.body}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Type: {selectedNotification.type}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Status: {selectedNotification.status}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Target Audience
+                  </h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedNotification.targetAudience.map((audience) => (
+                      <span
+                        key={audience}
+                        className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                      >
+                        {audience}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Recipients
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    Total: {selectedNotification.recipients.total}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Sent: {selectedNotification.recipients.sent}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Failed: {selectedNotification.recipients.failed}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Timestamps
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    Created: {new Date(selectedNotification.createdAt).toLocaleString()}
+                  </p>
+                  {selectedNotification.scheduledFor && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Scheduled For: {new Date(selectedNotification.scheduledFor).toLocaleString()}
+                    </p>
+                  )}
+                  {selectedNotification.sentAt && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Sent At: {new Date(selectedNotification.sentAt).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Recipients
-                </h4>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  Total: {selectedNotification.recipients.total}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Sent: {selectedNotification.recipients.sent}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Failed: {selectedNotification.recipients.failed}
-                </p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Timestamps
-                </h4>
-                <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                  Created: {new Date(selectedNotification.createdAt).toLocaleString()}
-                </p>
-                {selectedNotification.scheduledFor && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Scheduled For: {new Date(selectedNotification.scheduledFor).toLocaleString()}
-                  </p>
-                )}
-                {selectedNotification.sentAt && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Sent At: {new Date(selectedNotification.sentAt).toLocaleString()}
-                  </p>
-                )}
+              <div className="mt-6 flex justify-end">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedNotification(null)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500"
+                >
+                  Close
+                </motion.button>
               </div>
             </div>
           </div>

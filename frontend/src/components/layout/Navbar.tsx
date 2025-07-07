@@ -12,6 +12,7 @@ import {
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
+import NotificationBadge from '../common/NotificationBadge';
 
 interface NavbarProps {
   onSearch: (query: string) => void;
@@ -121,6 +122,7 @@ export default function Navbar({ onSearch, onLocationSelect }: NavbarProps) {
             <div className="hidden md:flex items-center space-x-4">
               {user ? (
                 <>
+                  <NotificationBadge />
                   <Link
                     to="/dashboard"
                     className={`px-4 py-2 rounded-full text-sm font-medium ${

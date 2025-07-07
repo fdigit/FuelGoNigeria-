@@ -1,6 +1,7 @@
 export interface Driver {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   email: string;
   status: 'available' | 'busy' | 'offline';

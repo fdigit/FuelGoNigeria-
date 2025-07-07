@@ -4,6 +4,9 @@ export type { Product, Vendor, VendorDisplay } from './vendor';
 // Export all types from user.ts
 export * from './user';
 
+// Export all types from order.ts
+export * from './order';
+
 // Common interfaces
 export interface FuelType {
   type: string;

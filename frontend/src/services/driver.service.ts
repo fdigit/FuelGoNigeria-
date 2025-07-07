@@ -1,10 +1,51 @@
 import { Driver } from '../types/driver';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+interface AssignedDelivery {
+  _id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  deliveryAddress: string;
+  fuelType: string;
+  quantity: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  estimatedTime: string;
+  specialInstructions?: string;
+  orderItems: Array<{
+    _id: string;
+    productId: string;
+    quantity: number;
+    price: number;
+    product: {
+      _id: string;
+      name: string;
+      type: string;
+      unit: string;
+    };
+  }>;
+  totalAmount: number;
+  deliveryFee: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 class DriverService {
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    let token = null;
+    
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        token = userData.token;
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    }
+    
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -155,6 +196,104 @@ class DriverService {
       return await response.json();
     } catch (error) {
       console.error('Error fetching driver details:', error);
+      throw error;
+    }
+  }
+
+  // Get driver's assigned deliveries
+  async getAssignedDeliveries(): Promise<AssignedDelivery[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/driver/deliveries`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch assigned deliveries');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching assigned deliveries:', error);
+      throw error;
+    }
+  }
+
+  // Update delivery status
+  async updateDeliveryStatus(deliveryId: string, status: 'in_progress' | 'completed' | 'cancelled'): Promise<{ message: string; delivery: AssignedDelivery }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/driver/deliveries/${deliveryId}/status`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update delivery status');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating delivery status:', error);
+      throw error;
+    }
+  }
+
+  // Confirm payment for COD orders
+  async confirmPayment(orderId: string, paymentAmount: number, paymentMethod: string = 'CASH'): Promise<{ message: string; order: any }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/confirm-payment`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ paymentAmount, paymentMethod })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to confirm payment');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      throw error;
+    }
+  }
+
+  // Get driver profile
+  async getDriverProfile(): Promise<Driver> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/driver/profile`, {
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch driver profile');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching driver profile:', error);
+      throw error;
+    }
+  }
+
+  // Update driver availability
+  async updateAvailability(isAvailable: boolean): Promise<{ message: string; driver: Driver }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/driver/availability`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ isAvailable })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update availability');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating availability:', error);
       throw error;
     }
   }

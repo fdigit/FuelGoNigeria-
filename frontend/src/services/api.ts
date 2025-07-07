@@ -26,7 +26,7 @@ export interface AdminInvitation {
 }
 
 // Use environment variable for API URL, fallback to localhost for development
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -43,6 +43,7 @@ api.interceptors.request.use(
     const storedUser = localStorage.getItem('user');
     let token = null;
     
+    console.log('Request interceptor - URL:', config.url);
     console.log('Request interceptor - storedUser:', storedUser);
     
     if (storedUser) {
@@ -50,6 +51,7 @@ api.interceptors.request.use(
         const userData = JSON.parse(storedUser);
         token = userData.token;
         console.log('Request interceptor - token from user data:', token ? 'Present' : 'Missing');
+        console.log('Request interceptor - user role:', userData.role);
       } catch (error) {
         console.log('Error parsing user data from localStorage:', error);
       }
@@ -224,10 +226,10 @@ export const adminService = {
 export const vendorService = {
   getVendors: async (): Promise<VendorDisplay[]> => {
     try {
-      console.log('Fetching vendors from API...');
+      console.log('Fetching vendors from:', `${API_URL}/api/vendor`);
       const response = await api.get('/api/vendor');
-      console.log('Raw API Response:', response);
-      console.log('API Response Data:', response.data);
+      console.log('Vendor response status:', response.status);
+      console.log('Vendor response data length:', response.data?.length);
       
       if (!response.data || !Array.isArray(response.data)) {
         console.error('Invalid vendor data received:', response.data);
@@ -235,15 +237,12 @@ export const vendorService = {
       }
 
       const vendors = response.data.map((vendor: any): VendorDisplay => {
-        console.log('Processing vendor:', vendor);
-        console.log('Vendor logo:', vendor.logo);
-        
-        // Calculate price range from products
+        // Calculate price range from products (if available)
         const prices = vendor.products?.map((p: Product) => p.price_per_unit) || [];
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const minPrice = Math.min(...prices, 650); // Default to 650 if no products
+        const minPrice = prices.length > 0 ? Math.min(...prices) : 650; // Default to 650 if no products
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const maxPrice = Math.max(...prices, 680); // Default to 680 if no products
+        const maxPrice = prices.length > 0 ? Math.max(...prices) : 680; // Default to 680 if no products
 
         // Construct full logo URL if it's a relative path
         let fullLogoUrl = vendor.logo;
@@ -251,7 +250,6 @@ export const vendorService = {
           // Remove '/api' from the API_URL since we're accessing static files
           const baseUrl = API_URL.replace('/api', '');
           fullLogoUrl = `${baseUrl}${vendor.logo}`;
-          console.log('Constructed full logo URL:', fullLogoUrl);
         }
 
         const transformedVendor = {
@@ -277,14 +275,37 @@ export const vendorService = {
           created_at: vendor.created_at,
           updated_at: vendor.updated_at,
         };
-        console.log('Transformed vendor:', transformedVendor);
         return transformedVendor;
       });
-
-      console.log('Final transformed vendors:', vendors);
       return vendors;
     } catch (error) {
       console.error('Error fetching vendors:', error);
+      throw error;
+    }
+  },
+
+  // Get single vendor details with products
+  getVendorById: async (vendorId: string): Promise<any> => {
+    try {
+      console.log('Fetching vendor details for ID:', vendorId);
+      const response = await api.get(`/api/vendor/${vendorId}`);
+      console.log('Vendor detail response:', response.data);
+      
+      const vendorData = response.data;
+      
+      // Construct full logo URL if it's a relative path
+      if (vendorData.logo && vendorData.logo.startsWith('/uploads/')) {
+        const baseUrl = API_URL.replace('/api', '');
+        vendorData.logo = `${baseUrl}${vendorData.logo}`;
+        console.log('Vendor detail logo URL constructed:', vendorData.logo);
+      }
+      
+      return vendorData;
+    } catch (error: any) {
+      console.error('Error fetching vendor details:', error);
+      if (error.response?.status === 404) {
+        throw new Error('Vendor not found');
+      }
       throw error;
     }
   },
@@ -336,6 +357,18 @@ export const vendorService = {
       return response.data;
     } catch (error: any) {
       console.error('Error uploading logo:', error);
+      throw error;
+    }
+  }
+};
+
+export const driverService = {
+  getDrivers: async (): Promise<any[]> => {
+    try {
+      const response = await api.get('/api/vendor/drivers');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching drivers:', error);
       throw error;
     }
   }

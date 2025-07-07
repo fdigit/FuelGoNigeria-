@@ -43,6 +43,8 @@ model User {
   reviews  Review[]
   payments Payment[]
   driver   Driver?
+  notifications Notification[]
+  notificationPreference UserNotificationPreference?
   
   @@map("users")
 }
@@ -142,6 +144,7 @@ model Order {
   
   // Delivery
   deliveryAddress Address?
+  deliveryInstructions String?
   deliveryTime    DateTime?
   estimatedDelivery DateTime?
   
@@ -259,6 +262,70 @@ model Driver {
   @@map("drivers")
 }
 
+model Notification {
+  id          String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String           @db.ObjectId
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?            // Additional data for the notification
+  isRead      Boolean          @default(false)
+  priority    NotificationPriority @default(MEDIUM)
+  channel     NotificationChannel[]
+  sentAt      DateTime?
+  readAt      DateTime?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  title         String
+  message       String
+  type          NotificationType
+  priority      NotificationPriority @default(MEDIUM)
+  targetRoles   UserRole[]
+  isActive      Boolean          @default(true)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("notification_templates")
+}
+
+model UserNotificationPreference {
+  id                    String @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String @unique @db.ObjectId
+  emailNotifications    Boolean @default(true)
+  smsNotifications      Boolean @default(true)
+  pushNotifications     Boolean @default(true)
+  inAppNotifications    Boolean @default(true)
+  
+  // Notification type preferences
+  orderNotifications    Boolean @default(true)
+  paymentNotifications  Boolean @default(true)
+  systemNotifications   Boolean @default(true)
+  marketingNotifications Boolean @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  
+  @@map("user_notification_preferences")
+}
+
 // Enums
 enum UserRole {
   CUSTOMER
@@ -319,6 +386,31 @@ enum DriverStatus {
   BUSY
   OFFLINE
   SUSPENDED
+}
+
+enum NotificationType {
+  ORDER_STATUS
+  PAYMENT
+  DELIVERY
+  SYSTEM
+  MARKETING
+  ALERT
+  REVIEW
+  DISPUTE
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
 }
 
 // Complex types

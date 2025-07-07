@@ -16,6 +16,7 @@ async function seed() {
     await prisma.product.deleteMany();
     await prisma.driver.deleteMany();
     await prisma.vendor.deleteMany();
+    await prisma.notification.deleteMany();
     await prisma.user.deleteMany();
 
     console.log('🗑️  Cleared existing data');

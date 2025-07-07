@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Vendor } from '../../types/vendor';
 
 interface VendorCardProps {
@@ -7,11 +8,14 @@ interface VendorCardProps {
 }
 
 export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
+  const navigate = useNavigate();
   console.log('VendorCard received vendor:', vendor);
   console.log('Vendor logo URL:', vendor.logo);
   
   // Generate a gradient based on vendor name for consistent colors
   const getGradientColors = (businessName: string) => {
+    if (!businessName) return 'from-gray-500 to-gray-600';
+    
     const colors = [
       'from-blue-500 to-purple-600',
       'from-green-500 to-teal-600',
@@ -26,10 +30,22 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
     return colors[index];
   };
 
-  const gradientClass = getGradientColors(vendor.business_name);
+  const gradientClass = getGradientColors(vendor.business_name || '');
   
+  // Safe access to nested properties
+  const businessName = vendor.business_name || 'Unknown Business';
+  const state = vendor.address?.state || 'Unknown State';
+  const city = vendor.address?.city || 'Unknown City';
+  const fuelTypes = vendor.fuel_types || [];
+  const operatingHours = vendor.operating_hours || { open: 'N/A', close: 'N/A' };
+  const averageRating = vendor.average_rating || 0;
+  const totalRatings = vendor.total_ratings || 0;
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300">
+    <div 
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+      onClick={() => navigate(`/vendor/${vendor._id}`)}
+    >
       {/* Banner Header */}
       <div className={`relative h-32 bg-gradient-to-r ${gradientClass} flex items-center justify-center`}>
         {/* Background Pattern */}
@@ -75,14 +91,17 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
                 : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
             }`}
           >
-            {vendor.verification_status.charAt(0).toUpperCase() + vendor.verification_status.slice(1)}
+            {vendor.verification_status ? 
+              vendor.verification_status.charAt(0).toUpperCase() + vendor.verification_status.slice(1) 
+              : 'Pending'
+            }
           </span>
         </div>
 
         {/* Business Name on Banner */}
         <div className="absolute bottom-3 left-3 right-3">
           <h3 className="text-lg font-bold text-white drop-shadow-lg truncate">
-            {vendor.business_name}
+            {businessName}
           </h3>
         </div>
       </div>
@@ -96,7 +115,7 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>{vendor.address.state}, {vendor.address.city}</span>
+            <span>{state}, {city}</span>
           </div>
 
           {/* Rating */}
@@ -106,7 +125,7 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
                 <svg
                   key={i}
                   className={`w-4 h-4 ${
-                    i < Math.floor(vendor.average_rating)
+                    i < Math.floor(averageRating)
                       ? 'text-yellow-400'
                       : 'text-gray-300 dark:text-gray-600'
                   }`}
@@ -118,10 +137,10 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
               ))}
             </div>
             <span className="ml-2 text-sm font-medium text-gray-900 dark:text-white">
-              {vendor.average_rating.toFixed(1)}
+              {averageRating.toFixed(1)}
             </span>
             <span className="ml-1 text-sm text-gray-500 dark:text-gray-400">
-              ({vendor.total_ratings})
+              ({totalRatings})
             </span>
           </div>
 
@@ -130,12 +149,12 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>{vendor.operating_hours.open} - {vendor.operating_hours.close}</span>
+            <span>{operatingHours.open} - {operatingHours.close}</span>
           </div>
 
           {/* Fuel Types */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {vendor.fuel_types.map((type) => (
+            {fuelTypes.map((type) => (
               <span
                 key={type}
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
@@ -149,7 +168,10 @@ export default function VendorCard({ vendor, onOrder }: VendorCardProps) {
         {/* Order Button */}
         <div className="mt-auto">
           <button
-            onClick={() => onOrder(vendor._id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOrder(vendor._id);
+            }}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Order Now

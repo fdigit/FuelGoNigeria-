@@ -49,9 +49,14 @@ export default function VendorManagement() {
   };
 
   const filteredVendors = vendors.filter(vendor => {
-    const matchesSearch = vendor.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         `${vendor.address.state}, ${vendor.address.city}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || vendor.verification_status === statusFilter;
+    const businessName = vendor.business_name || '';
+    const state = vendor.address?.state || '';
+    const city = vendor.address?.city || '';
+    const verificationStatus = vendor.verification_status || 'pending';
+    
+    const matchesSearch = businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         `${state}, ${city}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || verificationStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -91,77 +96,92 @@ export default function VendorManagement() {
 
       {/* Vendors List - Mobile Card View */}
       <div className="block sm:hidden space-y-4">
-        {filteredVendors.map((vendor) => (
-          <div key={vendor._id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {vendor.business_name}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {vendor.address.state}, {vendor.address.city}
-                </p>
-              </div>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  vendor.verification_status === 'verified'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                    : vendor.verification_status === 'rejected'
-                    ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                }`}
-              >
-                {vendor.verification_status.charAt(0).toUpperCase() + vendor.verification_status.slice(1)}
-              </span>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 mb-3">
-              {vendor.fuel_types.map((type) => (
+        {filteredVendors.map((vendor) => {
+          // Safe access to vendor properties
+          const businessName = vendor.business_name || 'Unknown Business';
+          const state = vendor.address?.state || 'Unknown State';
+          const city = vendor.address?.city || 'Unknown City';
+          const verificationStatus = vendor.verification_status || 'pending';
+          const fuelTypes = vendor.fuel_types || [];
+          const averageRating = vendor.average_rating || 0;
+          const totalRatings = vendor.total_ratings || 0;
+          const createdDate = vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A';
+          
+          return (
+            <div key={vendor._id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {businessName}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {state}, {city}
+                  </p>
+                </div>
                 <span
-                  key={type}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100"
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    verificationStatus === 'verified'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                      : verificationStatus === 'rejected'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                  }`}
                 >
-                  {type}
+                  {verificationStatus ? 
+                    verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1)
+                    : 'Pending'
+                  }
                 </span>
-              ))}
-            </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-3">
+                {fuelTypes.map((type) => (
+                  <span
+                    key={type}
+                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100"
+                  >
+                    {type}
+                  </span>
+                ))}
+              </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-sm text-gray-900 dark:text-white">
-                  {vendor.average_rating.toFixed(1)}
-                </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                  ({vendor.total_ratings})
-                </span>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleViewDetails(vendor)}
-                  className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 text-sm"
-                >
-                  View Details
-                </button>
-                {vendor.verification_status === 'pending' && (
-                  <>
-                    <button
-                      onClick={() => handleVerificationStatusChange(vendor._id, 'verified')}
-                      className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 text-sm"
-                    >
-                      Verify
-                    </button>
-                    <button
-                      onClick={() => handleVerificationStatusChange(vendor._id, 'rejected')}
-                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-900 dark:text-white">
+                    {averageRating.toFixed(1)}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                    ({totalRatings})
+                  </span>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleViewDetails(vendor)}
+                    className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 text-sm"
+                  >
+                    View Details
+                  </button>
+                  {verificationStatus === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleVerificationStatusChange(vendor._id, 'verified')}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 text-sm"
+                      >
+                        Verify
+                      </button>
+                      <button
+                        onClick={() => handleVerificationStatusChange(vendor._id, 'rejected')}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Vendors List - Desktop Table View */}
@@ -191,84 +211,99 @@ export default function VendorManagement() {
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredVendors.map((vendor) => (
-                <tr key={vendor._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {vendor.business_name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Joined {new Date(vendor.created_at).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">
-                      {vendor.address.state}, {vendor.address.city}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex flex-wrap gap-1">
-                      {vendor.fuel_types.map((type) => (
-                        <span
-                          key={type}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100"
-                        >
-                          {type}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        vendor.verification_status === 'verified'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-                          : vendor.verification_status === 'rejected'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
-                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-                      }`}
-                    >
-                      {vendor.verification_status.charAt(0).toUpperCase() + vendor.verification_status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span className="text-sm text-gray-900 dark:text-white">
-                        {vendor.average_rating.toFixed(1)}
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
-                        ({vendor.total_ratings})
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewDetails(vendor)}
-                        className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+              {filteredVendors.map((vendor) => {
+                // Safe access to vendor properties
+                const businessName = vendor.business_name || 'Unknown Business';
+                const state = vendor.address?.state || 'Unknown State';
+                const city = vendor.address?.city || 'Unknown City';
+                const verificationStatus = vendor.verification_status || 'pending';
+                const fuelTypes = vendor.fuel_types || [];
+                const averageRating = vendor.average_rating || 0;
+                const totalRatings = vendor.total_ratings || 0;
+                const createdDate = vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : 'N/A';
+                
+                return (
+                  <tr key={vendor._id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {businessName}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Joined {createdDate}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {state}, {city}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {fuelTypes.map((type) => (
+                          <span
+                            key={type}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100"
+                          >
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          verificationStatus === 'verified'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                            : verificationStatus === 'rejected'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
+                        }`}
                       >
-                        View Details
-                      </button>
-                      {vendor.verification_status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleVerificationStatusChange(vendor._id, 'verified')}
-                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                          >
-                            Verify
-                          </button>
-                          <button
-                            onClick={() => handleVerificationStatusChange(vendor._id, 'rejected')}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        {verificationStatus ? 
+                          verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1)
+                          : 'Pending'
+                        }
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className="text-sm text-gray-900 dark:text-white">
+                          {averageRating.toFixed(1)}
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">
+                          ({totalRatings})
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleViewDetails(vendor)}
+                          className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300"
+                        >
+                          View Details
+                        </button>
+                        {verificationStatus === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleVerificationStatusChange(vendor._id, 'verified')}
+                              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                            >
+                              Verify
+                            </button>
+                            <button
+                              onClick={() => handleVerificationStatusChange(vendor._id, 'rejected')}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -281,7 +316,7 @@ export default function VendorManagement() {
             <div className="p-4 sm:p-6">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  {selectedVendor.business_name}
+                  {selectedVendor.business_name || 'Unknown Business'}
                 </h3>
                 <button
                   onClick={() => setIsViewingDetails(false)}
@@ -297,37 +332,37 @@ export default function VendorManagement() {
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</h4>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedVendor.address.state}, {selectedVendor.address.city}
+                    {selectedVendor.address?.state || 'Unknown State'}, {selectedVendor.address?.city || 'Unknown City'}
                   </p>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Operating Hours</h4>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedVendor.operating_hours.open} - {selectedVendor.operating_hours.close}
+                    {selectedVendor.operating_hours?.open || 'N/A'} - {selectedVendor.operating_hours?.close || 'N/A'}
                   </p>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Contact</h4>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    Phone: {selectedVendor.contact.phone}
+                    Phone: {selectedVendor.contact?.phone || 'N/A'}
                     <br />
-                    Email: {selectedVendor.contact.email}
+                    Email: {selectedVendor.contact?.email || 'N/A'}
                   </p>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Services</h4>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedVendor.services.join(', ')}
+                    {selectedVendor.services?.join(', ') || 'No services listed'}
                   </p>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Payment Methods</h4>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedVendor.payment_methods.join(', ')}
+                    {selectedVendor.payment_methods?.join(', ') || 'No payment methods listed'}
                   </p>
                 </div>
               </div>
