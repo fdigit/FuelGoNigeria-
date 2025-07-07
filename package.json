@@ -52,7 +52,6 @@
     "@types/node": "^18.19.96",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
-    "@vercel/static-build": "^3.0.0",
     "autoprefixer": "^9.8.8",
     "concurrently": "^8.2.2",
     "jest": "^29.5.0",
